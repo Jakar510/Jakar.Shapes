@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Jakar.Shapes.Experiments/Jakar.Shapes.Experiments.csproj" />
+  <Project Path="Jakar.Shapes.Tests/Jakar.Shapes.Tests.csproj" />
+  <Project Path="Jakar.Shapes/Jakar.Shapes.csproj" />
+</Solution>
