@@ -21,10 +21,7 @@ public readonly struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, boo
     public readonly        ReadOnlyPoint End      = end;
     public readonly        bool          IsFinite = isFinite;
 
-
-    public static       JsonSerializerContext             JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<ReadOnlyLine>        JsonTypeInfo  => JakarShapesContext.Default.ReadOnlyLine;
-    public static       JsonTypeInfo<ReadOnlyLine[]>      JsonArrayInfo => JakarShapesContext.Default.ReadOnlyLineArray;
+     
     static ref readonly ReadOnlyLine IShape<ReadOnlyLine>.Zero          => ref Zero;
     static ref readonly ReadOnlyLine IShape<ReadOnlyLine>.One           => ref One;
     static ref readonly ReadOnlyLine IShape<ReadOnlyLine>.Invalid       => ref Invalid;
@@ -60,7 +57,7 @@ public readonly struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, boo
         result = Invalid;
         return false;
     }
-    public static ReadOnlyLine FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static ReadOnlyLine FromJson( string json ) => json.FromJson<ReadOnlyLine>();
 
 
     public int CompareTo( ReadOnlyLine other )

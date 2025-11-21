@@ -22,10 +22,7 @@ public readonly struct ReadOnlyThickness( double left, double top, double right,
     public readonly        double            HorizontalThickness = left + right;
     public readonly        double            VerticalThickness   = top  + bottom;
 
-
-    public static       JsonSerializerContext                       JsonContext         => JakarShapesContext.Default;
-    public static       JsonTypeInfo<ReadOnlyThickness>             JsonTypeInfo        => JakarShapesContext.Default.ReadOnlyThickness;
-    public static       JsonTypeInfo<ReadOnlyThickness[]>           JsonArrayInfo       => JakarShapesContext.Default.ReadOnlyThicknessArray;
+     
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.Zero                => ref Zero;
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.Invalid             => ref Invalid;
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.One                 => ref One;
@@ -62,7 +59,7 @@ public readonly struct ReadOnlyThickness( double left, double top, double right,
         result = Invalid;
         return false;
     }
-    public static ReadOnlyThickness FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static ReadOnlyThickness FromJson( string json ) => json.FromJson<ReadOnlyThickness>();
 
 
     public void Deconstruct( out float  left,             out float  top, out float right, out float bottom ) => ( left, top, right, bottom ) = ( Left.AsFloat(), Top.AsFloat(), Right.AsFloat(), Bottom.AsFloat() );

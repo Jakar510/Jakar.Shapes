@@ -40,7 +40,7 @@ public interface IRectangle<TSelf> : IShape<TSelf>, IShapeSize, IShapeLocation
             case "json":
             case "JSON":
             case "Json":
-                return self.ToJson(TSelf.JsonTypeInfo);
+                return self.ToJson();
 
             case ",":
                 return $"{self.X},{self.Y},{self.Width},{self.Height}";

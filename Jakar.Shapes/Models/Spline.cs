@@ -23,10 +23,7 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
     private static readonly ReadOnlyPoint[] __empty = [];
     public readonly         ReadOnlyPoint[] Points  = points ?? __empty;
 
-
-    public static JsonSerializerContext  JsonContext   => JakarShapesContext.Default;
-    public static JsonTypeInfo<Spline>   JsonTypeInfo  => JakarShapesContext.Default.Spline;
-    public static JsonTypeInfo<Spline[]> JsonArrayInfo => JakarShapesContext.Default.SplineArray;
+     
     public ref readonly ReadOnlyPoint this[ int   index ] => ref Points[index];
     public ref readonly ReadOnlyPoint this[ Index index ] => ref Points[index];
     public Spline this[ Range                     index ] { [Pure] get => new(Points[index]); }
@@ -79,7 +76,7 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
         result = Invalid;
         return false;
     }
-    public static Spline FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static Spline FromJson( string json ) => json.FromJson<Spline>();
 
 
     public int CompareTo( object? other, IComparer comparer ) => other is Spline spline

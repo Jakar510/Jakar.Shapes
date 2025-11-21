@@ -24,10 +24,7 @@ public readonly struct ReadOnlyRectangleF( float x, float y, float width, float 
     public readonly        float              Width   = width;
     public readonly        float              Height  = height;
 
-
-    public static       JsonSerializerContext                         JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<ReadOnlyRectangleF>              JsonTypeInfo  => JakarShapesContext.Default.ReadOnlyRectangleF;
-    public static       JsonTypeInfo<ReadOnlyRectangleF[]>            JsonArrayInfo => JakarShapesContext.Default.ReadOnlyRectangleFArray;
+     
     static ref readonly ReadOnlyRectangleF IShape<ReadOnlyRectangleF>.Zero          => ref Zero;
     static ref readonly ReadOnlyRectangleF IShape<ReadOnlyRectangleF>.Invalid       => ref Invalid;
     static ref readonly ReadOnlyRectangleF IShape<ReadOnlyRectangleF>.One           => ref One;
@@ -68,7 +65,7 @@ public readonly struct ReadOnlyRectangleF( float x, float y, float width, float 
         result = Invalid;
         return false;
     }
-    public static ReadOnlyRectangleF FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static ReadOnlyRectangleF FromJson( string json ) => json.FromJson<ReadOnlyRectangleF>();
     [Pure] public static ReadOnlyRectangleF Create<TPoint>( params ReadOnlySpan<TPoint> points )
         where TPoint : struct, IPoint<TPoint>
     {

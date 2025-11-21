@@ -22,18 +22,15 @@ public readonly struct Circle( ReadOnlyPoint center, double radius ) : ICircle<C
     public readonly        double        Radius    = radius;
 
 
-    public static       JsonSerializerContext  JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<Circle>   JsonTypeInfo  => JakarShapesContext.Default.Circle;
-    public static       JsonTypeInfo<Circle[]> JsonArrayInfo => JakarShapesContext.Default.CircleArray;
-    static ref readonly Circle IShape<Circle>. Zero          => ref Zero;
-    static ref readonly Circle IShape<Circle>. One           => ref One;
-    static ref readonly Circle IShape<Circle>. Invalid       => ref Invalid;
-    bool IValidator.                           IsValid       => this.IsValid();
-    double ICircle<Circle>.                    Radius        => Radius;
-    ReadOnlyPoint ICircle<Circle>.             Center        => Center;
-    ReadOnlyPoint IShapeLocation.              Location      => Center;
-    double IShapeLocation.                     X             => Center.X;
-    double IShapeLocation.                     Y             => Center.Y;
+    static ref readonly Circle IShape<Circle>.Zero     => ref Zero;
+    static ref readonly Circle IShape<Circle>.One      => ref One;
+    static ref readonly Circle IShape<Circle>.Invalid  => ref Invalid;
+    bool IValidator.                          IsValid  => this.IsValid();
+    double ICircle<Circle>.                   Radius   => Radius;
+    ReadOnlyPoint ICircle<Circle>.            Center   => Center;
+    ReadOnlyPoint IShapeLocation.             Location => Center;
+    double IShapeLocation.                    X        => Center.X;
+    double IShapeLocation.                    Y        => Center.Y;
 
 
     public static implicit operator Circle( ReadOnlyPointF point ) => new(point.X, point.Y);
@@ -63,7 +60,7 @@ public readonly struct Circle( ReadOnlyPoint center, double radius ) : ICircle<C
         result = Invalid;
         return false;
     }
-    public static                                     Circle FromJson( string         json )                  => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static                                     Circle FromJson( string         json )                  => json.FromJson<Circle>();
     [System.Diagnostics.Contracts.Pure] public static Circle Create( in ReadOnlyPoint center, double radius ) => new(center, radius);
     [System.Diagnostics.Contracts.Pure] public static Circle Create( float            x,      float  y )      => Create(new ReadOnlyPoint(x, y), 1);
     [System.Diagnostics.Contracts.Pure] public static Circle Create( double           x,      double y )      => Create(new ReadOnlyPoint(x, y), 1);

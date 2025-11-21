@@ -16,10 +16,7 @@ public readonly struct ReadOnlySize( double width, double height ) : ISize<ReadO
     public readonly        double       Height  = height;
     public readonly        double       Width   = width;
 
-
-    public static       JsonSerializerContext             JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<ReadOnlySize>        JsonTypeInfo  => JakarShapesContext.Default.ReadOnlySize;
-    public static       JsonTypeInfo<ReadOnlySize[]>      JsonArrayInfo => JakarShapesContext.Default.ReadOnlySizeArray;
+     
     static ref readonly ReadOnlySize IShape<ReadOnlySize>.Zero          => ref Zero;
     static ref readonly ReadOnlySize IShape<ReadOnlySize>.Invalid       => ref Invalid;
     static ref readonly ReadOnlySize IShape<ReadOnlySize>.One           => ref One;
@@ -51,7 +48,7 @@ public readonly struct ReadOnlySize( double width, double height ) : ISize<ReadO
         result = Invalid;
         return false;
     }
-    public static ReadOnlySize FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static ReadOnlySize FromJson( string json ) => json.FromJson<ReadOnlySize>();
 
 
     public int CompareTo( ReadOnlySize other )

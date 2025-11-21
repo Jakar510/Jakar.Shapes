@@ -17,7 +17,7 @@ public interface IPoint<TSelf> : IShape<TSelf>, IShapeLocation
             case "json":
             case "JSON":
             case "Json":
-                return self.ToJson(TSelf.JsonTypeInfo);
+                return self.ToJson();
 
             case ",":
                 return $"{self.X},{self.Y}";

@@ -21,19 +21,16 @@ public readonly struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint
     public readonly        ReadOnlyPoint C       = c;
 
 
-    public static       JsonSerializerContext     JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<Triangle>    JsonTypeInfo  => JakarShapesContext.Default.Triangle;
-    public static       JsonTypeInfo<Triangle[]>  JsonArrayInfo => JakarShapesContext.Default.TriangleArray;
-    static ref readonly Triangle IShape<Triangle>.Zero          => ref Zero;
-    static ref readonly Triangle IShape<Triangle>.One           => ref One;
-    static ref readonly Triangle IShape<Triangle>.Invalid       => ref Invalid;
-    ReadOnlyPoint IShapeLocation.                 Location      => this.Centroid();
-    bool IValidator.                              IsValid       => this.IsValid();
-    public bool                                   IsNaN         => A.IsNaN() || B.IsNaN() || C.IsNaN();
-    public bool                                   IsValid       => !IsNaN;
-    ReadOnlyPoint ITriangle<Triangle>.            A             => A;
-    ReadOnlyPoint ITriangle<Triangle>.            B             => B;
-    ReadOnlyPoint ITriangle<Triangle>.            C             => C;
+    static ref readonly Triangle IShape<Triangle>.Zero     => ref Zero;
+    static ref readonly Triangle IShape<Triangle>.One      => ref One;
+    static ref readonly Triangle IShape<Triangle>.Invalid  => ref Invalid;
+    ReadOnlyPoint IShapeLocation.                 Location => this.Centroid();
+    bool IValidator.                              IsValid  => this.IsValid();
+    public bool                                   IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN();
+    public bool                                   IsValid  => !IsNaN;
+    ReadOnlyPoint ITriangle<Triangle>.            A        => A;
+    ReadOnlyPoint ITriangle<Triangle>.            B        => B;
+    ReadOnlyPoint ITriangle<Triangle>.            C        => C;
 
     double IShapeLocation.X => this.Centroid()
                                    .X;
@@ -60,7 +57,7 @@ public readonly struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint
         result = Invalid;
         return false;
     }
-    public static Triangle FromJson( string      json )                                => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static Triangle FromJson( string      json )                                => json.FromJson<Triangle>();
     public static Triangle Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c ) => new(a, b, c);
 
 

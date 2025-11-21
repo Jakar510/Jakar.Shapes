@@ -17,10 +17,7 @@ public struct MutableSize( double width, double height ) : ISize<MutableSize>
     public static readonly MutableSize Zero    = 0;
     public static readonly MutableSize One     = 1;
 
-
-    public static       JsonSerializerContext           JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<MutableSize>       JsonTypeInfo  => JakarShapesContext.Default.MutableSize;
-    public static       JsonTypeInfo<MutableSize[]>     JsonArrayInfo => JakarShapesContext.Default.MutableSizeArray;
+     
     static ref readonly MutableSize IShape<MutableSize>.Zero          => ref Zero;
     static ref readonly MutableSize IShape<MutableSize>.Invalid       => ref Invalid;
     static ref readonly MutableSize IShape<MutableSize>.One           => ref One;
@@ -122,7 +119,7 @@ public struct MutableSize( double width, double height ) : ISize<MutableSize>
         result = Invalid;
         return false;
     }
-    public static        MutableSize FromJson( string             json )                 => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static        MutableSize FromJson( string             json )                 => json.FromJson<MutableSize>();
     [Pure] public static MutableSize Create( double               width, double height ) => new(width, height);
     [Pure] public static MutableSize Create( in MutableSize       size )    => new(size.Width, size.Height);
     [Pure] public static MutableSize Create( in ReadOnlySizeF     size )    => new(size.Width, size.Height);

@@ -24,9 +24,6 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
     public readonly         ReadOnlyPoint[] Points  = points ?? __empty;
 
 
-    public static JsonSerializerContext   JsonContext   => JakarShapesContext.Default;
-    public static JsonTypeInfo<Polygon>   JsonTypeInfo  => JakarShapesContext.Default.Polygon;
-    public static JsonTypeInfo<Polygon[]> JsonArrayInfo => JakarShapesContext.Default.PolygonArray;
     public ref readonly ReadOnlyPoint this[ int   index ] => ref Points[index];
     public ref readonly ReadOnlyPoint this[ Index index ] => ref Points[index];
     public Spline this[ Range                     index ] { [Pure] get => new(Points[index]); }
@@ -79,7 +76,7 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
         result = Invalid;
         return false;
     }
-    public static Polygon FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static Polygon FromJson( string json ) => json.FromJson<Polygon>();
 
 
     public int CompareTo( object? other, IComparer comparer ) => other is Polygon spline

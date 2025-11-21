@@ -20,10 +20,7 @@ public readonly struct ReadOnlyPointF( float x, float y ) : IPoint<ReadOnlyPoint
     public readonly        float          X       = x;
     public readonly        float          Y       = y;
 
-
-    public static       JsonSerializerContext                 JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<ReadOnlyPointF>          JsonTypeInfo  => JakarShapesContext.Default.ReadOnlyPointF;
-    public static       JsonTypeInfo<ReadOnlyPointF[]>        JsonArrayInfo => JakarShapesContext.Default.ReadOnlyPointFArray;
+     
     static ref readonly ReadOnlyPointF IShape<ReadOnlyPointF>.Zero          => ref Zero;
     static ref readonly ReadOnlyPointF IShape<ReadOnlyPointF>.Invalid       => ref Invalid;
     static ref readonly ReadOnlyPointF IShape<ReadOnlyPointF>.One           => ref One;
@@ -63,7 +60,7 @@ public readonly struct ReadOnlyPointF( float x, float y ) : IPoint<ReadOnlyPoint
         result = Invalid;
         return false;
     }
-    public static ReadOnlyPointF FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static ReadOnlyPointF FromJson( string json ) => json.FromJson<ReadOnlyPointF>();
 
 
     public int CompareTo( ReadOnlyPointF other )

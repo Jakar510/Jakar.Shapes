@@ -17,17 +17,14 @@ public struct MutableRectangle( double x, double y, double width, double height 
     public static readonly MutableRectangle One     = 1;
 
 
-    public static       JsonSerializerContext                     JsonContext   => JakarShapesContext.Default;
-    public static       JsonTypeInfo<MutableRectangle>            JsonTypeInfo  => JakarShapesContext.Default.MutableRectangle;
-    public static       JsonTypeInfo<MutableRectangle[]>          JsonArrayInfo => JakarShapesContext.Default.MutableRectangleArray;
-    static ref readonly MutableRectangle IShape<MutableRectangle>.Zero          => ref Zero;
-    static ref readonly MutableRectangle IShape<MutableRectangle>.Invalid       => ref Invalid;
-    static ref readonly MutableRectangle IShape<MutableRectangle>.One           => ref One;
-    bool IValidator.                                              IsValid       => this.IsValid();
-    public double                                                 X             { get; set; } = x;
-    public double                                                 Y             { get; set; } = y;
-    public double                                                 Width         { get; set; } = width;
-    public double                                                 Height        { get; set; } = height;
+    static ref readonly MutableRectangle IShape<MutableRectangle>.Zero    => ref Zero;
+    static ref readonly MutableRectangle IShape<MutableRectangle>.Invalid => ref Invalid;
+    static ref readonly MutableRectangle IShape<MutableRectangle>.One     => ref One;
+    bool IValidator.                                              IsValid => this.IsValid();
+    public double                                                 X       { get; set; } = x;
+    public double                                                 Y       { get; set; } = y;
+    public double                                                 Width   { get; set; } = width;
+    public double                                                 Height  { get; set; } = height;
     public ReadOnlyPoint Location
     {
         readonly get => new(X, Y);
@@ -85,7 +82,7 @@ public struct MutableRectangle( double x, double y, double width, double height 
         result = Invalid;
         return false;
     }
-    public static MutableRectangle FromJson( string json ) => Validate.ThrowIfNull(JsonSerializer.Deserialize(json, JsonTypeInfo));
+    public static MutableRectangle FromJson( string json ) => json.FromJson<MutableRectangle>();
     [Pure] public static MutableRectangle Create<TPoint>( params ReadOnlySpan<TPoint> points )
         where TPoint : struct, IPoint<TPoint>
     {

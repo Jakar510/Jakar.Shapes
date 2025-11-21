@@ -6,152 +6,100 @@ namespace Jakar.Shapes;
 
 public static class Sizes
 {
-    public static string ToString<TSize>( this TSize self, string? format )
+    extension<TSize>( TSize self )
         where TSize : struct, ISize<TSize>
     {
-        switch ( format )
+        public string ToString( string? format )
         {
-            case "json":
-            case "JSON":
-            case "Json":
-                return self.ToJson();
+            switch ( format )
+            {
+                case "json":
+                case "JSON":
+                case "Json":
+                    return self.ToJson();
 
-            case ",":
-                return $"{self.Width},{self.Height}";
+                case ",":
+                    return $"{self.Width},{self.Height}";
 
-            case "-":
-                return $"{self.Width}-{self.Height}";
+                case "-":
+                    return $"{self.Width}-{self.Height}";
 
-            case EMPTY:
-            case null:
-            default:
-                return $"{typeof(TSize).Name}<{nameof(self.Width)}: {self.Width}, {nameof(self.Height)}: {self.Height}>";
+                case EMPTY:
+                case null:
+                default:
+                    return $"{typeof(TSize).Name}<{nameof(self.Width)}: {self.Width}, {nameof(self.Height)}: {self.Height}>";
+            }
         }
+
+        [Pure] public TSize Reverse() => TSize.Create(self.Height,        self.Width);
+        [Pure] public TSize Round()   => TSize.Create(self.Width.Round(), self.Height.Round());
+        [Pure] public TSize Floor()   => TSize.Create(self.Width.Floor(), self.Height.Floor());
+
+        public void Deconstruct( out float width, out float height )
+        {
+            width  = (float)self.Width;
+            height = (float)self.Height;
+        }
+        public void Deconstruct( out double width, out double height )
+        {
+            width  = self.Width;
+            height = self.Height;
+        }
+
+        public bool  IsPortrait()  => self.Width > self.Height;
+        public bool  IsLandscape() => self.Width > self.Height;
+        public TSize Abs()         => TSize.Create(double.Abs(self.Width), double.Abs(self.Height));
+        public bool  IsFinite()    => double.IsFinite(self.Width) && double.IsFinite(self.Height);
+        public bool  IsInfinity()  => double.IsInfinity(self.Width) || double.IsInfinity(self.Height);
+        public bool  IsInteger()   => double.IsInteger(self.Width) && double.IsInteger(self.Height);
+        public bool  IsNaN()       => double.IsNaN(self.Width) || double.IsNaN(self.Height);
+        public bool  IsNegative()  => self is { Width: < 0, Height: < 0 };
+        public bool  IsValid()     => !self.IsNaN() && self.IsFinite() && self.IsPositive();
+        public bool  IsPositive()  => self is { Width: > 0, Height: > 0 };
+        public bool  IsZero()      => self is { Width: 0, Height  : 0 };
+
+        public TSize Add( Size       value ) => TSize.Create(self.Width + value.Width, self.Height + value.Height);
+        public TSize Subtract( Size  value ) => TSize.Create(self.Width - value.Width, self.Height - value.Height);
+        public TSize Multiply( Size  value ) => TSize.Create(self.Width * value.Width, self.Height * value.Height);
+        public TSize Divide( Size    value ) => TSize.Create(self.Width / value.Width, self.Height / value.Height);
+        public TSize Add( SizeF      value ) => TSize.Create(self.Width + value.Width, self.Height + value.Height);
+        public TSize Subtract( SizeF value ) => TSize.Create(self.Width - value.Width, self.Height - value.Height);
+        public TSize Multiply( SizeF value ) => TSize.Create(self.Width * value.Width, self.Height * value.Height);
+        public TSize Divide( SizeF   value ) => TSize.Create(self.Width / value.Width, self.Height / value.Height);
+
+        public TSize Add<TOther>( TOther value )
+            where TOther : struct, ISize<TOther> => TSize.Create(self.Width + value.Width, self.Height + value.Height);
+        public TSize Subtract<TOther>( TOther value )
+            where TOther : struct, ISize<TOther> => TSize.Create(self.Width - value.Width, self.Height - value.Height);
+        public TSize Multiply<TOther>( TOther value )
+            where TOther : struct, ISize<TOther> => TSize.Create(self.Width * value.Width, self.Height * value.Height);
+        public TSize Divide<TOther>( TOther value )
+            where TOther : struct, ISize<TOther> => TSize.Create(self.Width / value.Width, self.Height / value.Height);
+
+        public TSize Add( (int xOffset, int yOffset)            value ) => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
+        public TSize Subtract( (int xOffset, int yOffset)       value ) => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
+        public TSize Divide( (int xOffset, int yOffset)         value ) => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
+        public TSize Multiply( (int xOffset, int yOffset)       value ) => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
+        public TSize Add( (float xOffset, float yOffset)        value ) => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
+        public TSize Multiply( (float xOffset, float yOffset)   value ) => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
+        public TSize Divide( (float xOffset, float yOffset)     value ) => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
+        public TSize Subtract( (float xOffset, float yOffset)   value ) => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
+        public TSize Add( (double xOffset, double yOffset)      value ) => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
+        public TSize Subtract( (double xOffset, double yOffset) value ) => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
+        public TSize Divide( (double xOffset, double yOffset)   value ) => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
+        public TSize Multiply( (double xOffset, double yOffset) value ) => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
+
+        public TSize Add( double      value ) => TSize.Create(self.Width + value, self.Height + value);
+        public TSize Subtract( double value ) => TSize.Create(self.Width - value, self.Height - value);
+        public TSize Multiply( double value ) => TSize.Create(self.Width * value, self.Height * value);
+        public TSize Divide( double   value ) => TSize.Create(self.Width / value, self.Height / value);
+        public TSize Add( float       value ) => TSize.Create(self.Width + value, self.Height + value);
+        public TSize Subtract( float  value ) => TSize.Create(self.Width - value, self.Height - value);
+        public TSize Divide( float    value ) => TSize.Create(self.Width / value, self.Height / value);
+        public TSize Multiply( float  value ) => TSize.Create(self.Width * value, self.Height * value);
+        public TSize Add( int         value ) => TSize.Create(self.Width + value, self.Height + value);
+        public TSize Subtract( int    value ) => TSize.Create(self.Width - value, self.Height - value);
+        public TSize Divide( int      value ) => TSize.Create(self.Width / value, self.Height / value);
+        public TSize Multiply( int    value ) => TSize.Create(self.Width * value, self.Height * value);
     }
-
-
-    [Pure] public static TSize Reverse<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Height, self.Width);
-    [Pure] public static TSize Round<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width.Round(), self.Height.Round());
-    [Pure] public static TSize Floor<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width.Floor(), self.Height.Floor());
-
-
-    public static void Deconstruct<TSize>( this TSize self, out float width, out float height )
-        where TSize : struct, ISize<TSize>
-    {
-        width  = (float)self.Width;
-        height = (float)self.Height;
-    }
-    public static void Deconstruct<TSize>( this TSize self, out double width, out double height )
-        where TSize : struct, ISize<TSize>
-    {
-        width  = self.Width;
-        height = self.Height;
-    }
-
-
-    public static bool IsPortrait<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => self.Width > self.Height;
-    public static bool IsLandscape<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => self.Width > self.Height;
-
-
-    public static TSize Abs<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => TSize.Create(double.Abs(self.Width), double.Abs(self.Height));
-    public static bool IsFinite<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => double.IsFinite(self.Width) && double.IsFinite(self.Height);
-    public static bool IsInfinity<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => double.IsInfinity(self.Width) || double.IsInfinity(self.Height);
-    public static bool IsInteger<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => double.IsInteger(self.Width) && double.IsInteger(self.Height);
-    public static bool IsNaN<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => double.IsNaN(self.Width) || double.IsNaN(self.Height);
-    public static bool IsNegative<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => self is { Width: < 0, Height: < 0 };
-    public static bool IsValid<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => !self.IsNaN() && self.IsFinite() && self.IsPositive();
-    public static bool IsPositive<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => self is { Width: > 0, Height: > 0 };
-    public static bool IsZero<TSize>( this TSize self )
-        where TSize : struct, ISize<TSize> => self is { Width: 0, Height: 0 };
-
-
-    public static TSize Add<TSize>( this TSize self, Size value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value.Width, self.Height + value.Height);
-    public static TSize Subtract<TSize>( this TSize self, Size value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value.Width, self.Height - value.Height);
-    public static TSize Multiply<TSize>( this TSize self, Size value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value.Width, self.Height * value.Height);
-    public static TSize Divide<TSize>( this TSize self, Size value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value.Width, self.Height / value.Height);
-    public static TSize Add<TSize>( this TSize self, SizeF value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value.Width, self.Height + value.Height);
-    public static TSize Subtract<TSize>( this TSize self, SizeF value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value.Width, self.Height - value.Height);
-    public static TSize Multiply<TSize>( this TSize self, SizeF value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value.Width, self.Height * value.Height);
-    public static TSize Divide<TSize>( this TSize self, SizeF value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value.Width, self.Height / value.Height);
-    public static TSize Add<TSize, TOther>( this TSize self, TOther value )
-        where TSize : struct, ISize<TSize>
-        where TOther : struct, ISize<TOther> => TSize.Create(self.Width + value.Width, self.Height + value.Height);
-    public static TSize Subtract<TSize, TOther>( this TSize self, TOther value )
-        where TSize : struct, ISize<TSize>
-        where TOther : struct, ISize<TOther> => TSize.Create(self.Width - value.Width, self.Height - value.Height);
-    public static TSize Multiply<TSize, TOther>( this TSize self, TOther value )
-        where TSize : struct, ISize<TSize>
-        where TOther : struct, ISize<TOther> => TSize.Create(self.Width * value.Width, self.Height * value.Height);
-    public static TSize Divide<TSize, TOther>( this TSize self, TOther value )
-        where TSize : struct, ISize<TSize>
-        where TOther : struct, ISize<TOther> => TSize.Create(self.Width / value.Width, self.Height / value.Height);
-    public static TSize Add<TSize>( this TSize self, (int xOffset, int yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
-    public static TSize Subtract<TSize>( this TSize self, (int xOffset, int yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
-    public static TSize Divide<TSize>( this TSize self, (int xOffset, int yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
-    public static TSize Multiply<TSize>( this TSize self, (int xOffset, int yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
-    public static TSize Add<TSize>( this TSize self, (float xOffset, float yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
-    public static TSize Multiply<TSize>( this TSize self, (float xOffset, float yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
-    public static TSize Divide<TSize>( this TSize self, (float xOffset, float yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
-    public static TSize Subtract<TSize>( this TSize self, (float xOffset, float yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
-    public static TSize Add<TSize>( this TSize self, (double xOffset, double yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
-    public static TSize Subtract<TSize>( this TSize self, (double xOffset, double yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
-    public static TSize Divide<TSize>( this TSize self, (double xOffset, double yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
-    public static TSize Multiply<TSize>( this TSize self, (double xOffset, double yOffset) value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
-    public static TSize Add<TSize>( this TSize self, double value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value, self.Height + value);
-    public static TSize Subtract<TSize>( this TSize self, double value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value, self.Height - value);
-    public static TSize Multiply<TSize>( this TSize self, double value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value, self.Height * value);
-    public static TSize Divide<TSize>( this TSize self, double value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value, self.Height / value);
-    public static TSize Add<TSize>( this TSize self, float value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value, self.Height + value);
-    public static TSize Subtract<TSize>( this TSize self, float value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value, self.Height - value);
-    public static TSize Divide<TSize>( this TSize self, float value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value, self.Height / value);
-    public static TSize Multiply<TSize>( this TSize self, float value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value, self.Height * value);
-    public static TSize Add<TSize>( this TSize self, int value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width + value, self.Height + value);
-    public static TSize Subtract<TSize>( this TSize self, int value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width - value, self.Height - value);
-    public static TSize Divide<TSize>( this TSize self, int value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width / value, self.Height / value);
-    public static TSize Multiply<TSize>( this TSize self, int value )
-        where TSize : struct, ISize<TSize> => TSize.Create(self.Width * value, self.Height * value);
 }
