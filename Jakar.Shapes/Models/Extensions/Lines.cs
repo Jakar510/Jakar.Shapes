@@ -30,7 +30,8 @@ public static class Lines
                     return $"{typeof(TLine).Name}<{nameof(self.Start)}: {self.Start}, {nameof(self.End)}: {self.End}, {nameof(IsFinite)}: {self.IsFinite}>";
             }
         }
-     
+
+
         public void Deconstruct( out ReadOnlyPoint start, out ReadOnlyPoint end, out bool isFinite )
         {
             start    = self.Start;
@@ -65,7 +66,8 @@ public static class Lines
             start = self.Start;
             end   = self.End;
         }
-      
+
+
         [Pure] public TLine         Round()      => TLine.Create(self.Start.Round(), self.End.Round(), self.IsFinite);
         [Pure] public TLine         Floor()      => TLine.Create(self.Start.Floor(), self.End.Floor(), self.IsFinite);
         public        ReadOnlyPoint Center()     => new(( self.Start.Y + self.End.Y ) / 2, ( self.Start.X + self.End.X ) / 2);
@@ -75,10 +77,10 @@ public static class Lines
         public        bool          IsInfinity() => self.Start.IsInfinity() || self.End.IsInfinity();
         public        bool          IsInteger()  => self.Start.IsInteger()  || self.End.IsInteger();
         public        bool          IsNaN()      => self.Start.IsNaN()      || self.End.IsNaN();
-        public        bool          IsNegative() => self.Start.IsNegative() || self.End.IsNegative();
-        public        bool          IsValid()    => self.Start.IsValid()    || self.End.IsValid();
-        public        bool          IsPositive() => self.Start.IsNaN()      || self.End.IsNaN();
-        public        bool          IsZero()     => self.Start.IsZero()     || self.End.IsZero();
+        public        bool          IsNegative() => self.Start.IsNegative() && self.End.IsNegative();
+        public        bool          IsValid()    => self.Start.IsValid()    && self.End.IsValid();
+        public        bool          IsPositive() => self.Start.IsPositive() && self.End.IsPositive();
+        public        bool          IsZero()     => self.Start.IsZero()     && self.End.IsZero();
 
 
         public TLine Add<TOther>( TOther value )
@@ -89,6 +91,7 @@ public static class Lines
             where TOther : struct, ILine<TOther> => TLine.Create(self.Start * value.Start, self.End * value.End);
         public TLine Divide<TOther>( TOther value )
             where TOther : struct, ILine<TOther> => TLine.Create(self.Start / value.Start, self.End / value.End);
+
 
         public TLine Add( (int xOffset, int yOffset)            value ) => TLine.Create(self.Start + value.xOffset, self.End + value.yOffset);
         public TLine Subtract( (int xOffset, int yOffset)       value ) => TLine.Create(self.Start - value.xOffset, self.End - value.yOffset);
@@ -102,6 +105,7 @@ public static class Lines
         public TLine Subtract( (double xOffset, double yOffset) value ) => TLine.Create(self.Start - value.xOffset, self.End - value.yOffset);
         public TLine Divide( (double xOffset, double yOffset)   value ) => TLine.Create(self.Start / value.xOffset, self.End / value.yOffset);
         public TLine Multiply( (double xOffset, double yOffset) value ) => TLine.Create(self.Start * value.xOffset, self.End * value.yOffset);
+
 
         public TLine Add( double      value ) => TLine.Create(self.Start + value, self.End + value);
         public TLine Subtract( double value ) => TLine.Create(self.Start - value, self.End - value);

@@ -31,9 +31,11 @@ public static class Sizes
             }
         }
 
+
         [Pure] public TSize Reverse() => TSize.Create(self.Height,        self.Width);
         [Pure] public TSize Round()   => TSize.Create(self.Width.Round(), self.Height.Round());
         [Pure] public TSize Floor()   => TSize.Create(self.Width.Floor(), self.Height.Floor());
+
 
         public void Deconstruct( out float width, out float height )
         {
@@ -46,6 +48,7 @@ public static class Sizes
             height = self.Height;
         }
 
+
         public bool  IsPortrait()  => self.Width > self.Height;
         public bool  IsLandscape() => self.Width > self.Height;
         public TSize Abs()         => TSize.Create(double.Abs(self.Width), double.Abs(self.Height));
@@ -53,10 +56,11 @@ public static class Sizes
         public bool  IsInfinity()  => double.IsInfinity(self.Width) || double.IsInfinity(self.Height);
         public bool  IsInteger()   => double.IsInteger(self.Width) && double.IsInteger(self.Height);
         public bool  IsNaN()       => double.IsNaN(self.Width) || double.IsNaN(self.Height);
-        public bool  IsNegative()  => self is { Width: < 0, Height: < 0 };
         public bool  IsValid()     => !self.IsNaN() && self.IsFinite() && self.IsPositive();
+        public bool  IsNegative()  => self is { Width: < 0, Height: < 0 };
         public bool  IsPositive()  => self is { Width: > 0, Height: > 0 };
         public bool  IsZero()      => self is { Width: 0, Height  : 0 };
+        
 
         public TSize Add( Size       value ) => TSize.Create(self.Width + value.Width, self.Height + value.Height);
         public TSize Subtract( Size  value ) => TSize.Create(self.Width - value.Width, self.Height - value.Height);
@@ -67,6 +71,7 @@ public static class Sizes
         public TSize Multiply( SizeF value ) => TSize.Create(self.Width * value.Width, self.Height * value.Height);
         public TSize Divide( SizeF   value ) => TSize.Create(self.Width / value.Width, self.Height / value.Height);
 
+
         public TSize Add<TOther>( TOther value )
             where TOther : struct, ISize<TOther> => TSize.Create(self.Width + value.Width, self.Height + value.Height);
         public TSize Subtract<TOther>( TOther value )
@@ -75,6 +80,7 @@ public static class Sizes
             where TOther : struct, ISize<TOther> => TSize.Create(self.Width * value.Width, self.Height * value.Height);
         public TSize Divide<TOther>( TOther value )
             where TOther : struct, ISize<TOther> => TSize.Create(self.Width / value.Width, self.Height / value.Height);
+
 
         public TSize Add( (int xOffset, int yOffset)            value ) => TSize.Create(self.Width + value.xOffset, self.Height + value.yOffset);
         public TSize Subtract( (int xOffset, int yOffset)       value ) => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
@@ -88,6 +94,7 @@ public static class Sizes
         public TSize Subtract( (double xOffset, double yOffset) value ) => TSize.Create(self.Width - value.xOffset, self.Height - value.yOffset);
         public TSize Divide( (double xOffset, double yOffset)   value ) => TSize.Create(self.Width / value.xOffset, self.Height / value.yOffset);
         public TSize Multiply( (double xOffset, double yOffset) value ) => TSize.Create(self.Width * value.xOffset, self.Height * value.yOffset);
+
 
         public TSize Add( double      value ) => TSize.Create(self.Width + value, self.Height + value);
         public TSize Subtract( double value ) => TSize.Create(self.Width - value, self.Height - value);

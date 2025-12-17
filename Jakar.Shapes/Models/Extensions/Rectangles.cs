@@ -11,6 +11,8 @@ public static class Rectangles
     {
         public bool IsAtLeast<TOther>( in TOther other )
             where TOther : struct, IRectangle<TOther> => other.Width <= self.Width && other.Height <= self.Height;
+
+
         public bool Contains<TPoint>( in TPoint other )
             where TPoint : struct, IPoint<TPoint> => other.X >= self.X && other.X < self.MaxWidth() && other.Y >= self.Y && other.Y < self.MaxHeight();
         public bool Contains( in MutableRectangle other ) => self.X <= other.MaxWidth() && other.MaxWidth() >= self.X && self.Y <= other.MaxHeight() && self.MaxHeight() >= other.Y;
@@ -24,6 +26,8 @@ public static class Rectangles
 
             return false;
         }
+
+
         public bool ContainsAny<TPoint>( params ReadOnlySpan<TPoint> others )
             where TPoint : struct, IPoint<TPoint>
         {
@@ -44,6 +48,7 @@ public static class Rectangles
 
             return true;
         }
+
 
         [Pure] public ReadOnlyPoint TopLeft()     => new(self.X, self.Y);
         [Pure] public ReadOnlyPoint TopRight()    => new(self.MaxWidth(), self.Y);
@@ -84,7 +89,8 @@ public static class Rectangles
                        ? TRectangle.Zero
                        : TRectangle.Create(x, y, width, height);
         }
-     
+
+
         public bool IntersectsWith<TOther>( in TOther other )
             where TOther : struct, IRectangle<TOther> => !( ( self.X <= other.MaxWidth() && other.MaxWidth() >= self.X ) || ( self.Y <= other.MaxHeight() && self.MaxHeight() >= other.Y ) );
         public bool DoesLineIntersect<TPoint>( in TPoint source, in TPoint target )
@@ -142,6 +148,7 @@ public static class Rectangles
             return true;
         }
 
+
         public void Deconstruct( out float x, out float y, out float width, out float height )
         {
             x      = (float)self.X;
@@ -167,16 +174,18 @@ public static class Rectangles
             point = self.Location;
         }
 
+
         public ReadOnlyPoint Center()     => new(self.MaxWidth() / 2, self.MaxHeight() / 2);
         public TRectangle    Abs()        => TRectangle.Create(double.Abs(self.X), double.Abs(self.Y), double.Abs(self.Width), double.Abs(self.Height));
         public bool          IsFinite()   => double.IsFinite(self.X) && double.IsFinite(self.Y) && double.IsFinite(self.Width) && double.IsFinite(self.Height);
         public bool          IsInfinity() => double.IsInfinity(self.X) || double.IsInfinity(self.Y) || double.IsInfinity(self.Width) || double.IsInfinity(self.Height);
         public bool          IsInteger()  => double.IsInteger(self.X) && double.IsInteger(self.Y) && double.IsInteger(self.Width) && double.IsInteger(self.Height);
         public bool          IsNaN()      => double.IsNaN(self.X) || double.IsNaN(self.Y) || double.IsNaN(self.Width) || double.IsNaN(self.Height);
-        public bool          IsNegative() => self.Width < 0       || self.Height < 0;
-        public bool          IsValid()    => self.IsNaN()         || ( self.IsFinite() && ( self.Width <= 0 || self.Height <= 0 ) );
-        public bool          IsPositive() => self.Width > 0       || self.Height > 0;
-        public bool          IsZero()     => self.Width == 0      || self.Height == 0;
+        public bool          IsValid()    => !self.IsNaN() && self.IsFinite() && self.IsPositive();
+        public bool          IsPositive() => self is { Width: > 0, Height: > 0 };
+        public bool          IsNegative() => self is { Width: < 0, Height: < 0 };
+        public bool          IsZero()     => self.Width == 0 || self.Height == 0;
+
 
         public TRectangle Add<TOther>( TOther other )
             where TOther : struct, IRectangle<TOther> => TRectangle.Create(self.X + other.X, self.Y + other.Y, self.Width + other.Width, self.Height + other.Height);
@@ -186,6 +195,7 @@ public static class Rectangles
             where TOther : struct, IRectangle<TOther> => TRectangle.Create(self.X * other.X, self.Y * other.Y, self.Width * other.Width, self.Height * other.Height);
         public TRectangle Divide<TOther>( TOther other )
             where TOther : struct, IRectangle<TOther> => TRectangle.Create(self.X / other.X, self.Y / other.Y, self.Width / other.Width, self.Height / other.Height);
+
 
         public TRectangle Add( (int xOffset, int yOffset)            other ) => TRectangle.Create(self.Location, self.Size + other);
         public TRectangle Subtract( (int xOffset, int yOffset)       other ) => TRectangle.Create(self.Location, self.Size - other);
@@ -199,6 +209,7 @@ public static class Rectangles
         public TRectangle Subtract( (double xOffset, double yOffset) other ) => TRectangle.Create(self.Location, self.Size - other);
         public TRectangle Divide( (double xOffset, double yOffset)   other ) => TRectangle.Create(self.Location, self.Size / other);
         public TRectangle Multiply( (double xOffset, double yOffset) other ) => TRectangle.Create(self.Location, self.Size * other);
+
 
         public TRectangle Add( double      other ) => TRectangle.Create(self.X, self.Y, self.Width + other, self.Height + other);
         public TRectangle Subtract( double other ) => TRectangle.Create(self.X, self.Y, self.Width - other, self.Height - other);

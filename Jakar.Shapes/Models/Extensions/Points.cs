@@ -31,8 +31,8 @@ public static class Points
         public bool   IsInfinity() => double.IsInfinity(self.X) || double.IsInfinity(self.Y);
         public bool   IsInteger()  => double.IsInteger(self.X) && double.IsInteger(self.Y);
         public bool   IsNaN()      => double.IsNaN(self.X) || double.IsNaN(self.Y);
-        public bool   IsNegative() => self is { X: < 0, Y: < 0 };
         public bool   IsValid()    => !self.IsNaN() && self.IsFinite();
+        public bool   IsNegative() => self is { X: < 0, Y: < 0 };
         public bool   IsPositive() => self is { X: > 0, Y: > 0 };
         public bool   IsZero()     => self is { X: 0, Y  : 0 };
 

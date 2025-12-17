@@ -30,7 +30,7 @@ public static class Triangles
                     return $"{typeof(TTriangle).Name}<{nameof(self.A)}: {self.A}, {nameof(self.B)}: {self.B}, {nameof(self.C)}: {self.C}>";
             }
         }
-      
+
         public void Deconstruct( out ReadOnlyPoint a, out ReadOnlyPoint b, out ReadOnlyPoint c )
         {
             a = self.A;
@@ -43,7 +43,7 @@ public static class Triangles
             b = self.B;
             c = self.C;
         }
-    
+
         public ReadOnlyLine  Ab()         => new(self.A, self.B);
         public ReadOnlyLine  Bc()         => new(self.B, self.C);
         public ReadOnlyLine  Ca()         => new(self.C, self.A);
@@ -56,12 +56,12 @@ public static class Triangles
         public bool          IsFinite()   => self.A.IsFinite() && self.B.IsFinite() && self.C.IsFinite();
         public bool          IsInfinity() => self.A.IsInfinity() || self.B.IsInfinity() || self.C.IsInfinity();
         public bool          IsInteger()  => self.A.IsInteger() && self.B.IsInteger() && self.C.IsInteger();
-        public bool          IsNaN()      => self.A.IsNaN()      || self.B.IsNaN()      || self.C.IsNaN();
-        public bool          IsNegative() => self.A.IsNegative() || self.B.IsNegative() || self.C.IsNegative();
-        public bool          IsValid()    => !self.IsNaN() && self.IsFinite() && !( self.A.IsOneOf(self.B, self.C) || self.B.IsOneOf(self.A, self.C) || self.C.IsOneOf(self.A, self.B) );
-        public bool          IsPositive() => self.A.IsPositive() || self.B.IsPositive() || self.C.IsPositive();
-        public bool          IsZero()     => self.A.IsZero()     || self.B.IsZero()     || self.C.IsZero();
-      
+        public bool          IsNaN()      => self.A.IsNaN() || self.B.IsNaN() || self.C.IsNaN();
+        public bool          IsNegative() => self.A.IsNegative() && self.B.IsNegative() && self.C.IsNegative();
+        public bool          IsValid()    => !self.IsNaN()       && self.IsFinite()     && !self.A.IsOneOf(self.B, self.C) && !self.B.IsOneOf(self.A, self.C) && !self.C.IsOneOf(self.A, self.B);
+        public bool          IsPositive() => self.A.IsPositive() && self.B.IsPositive() && self.C.IsPositive();
+        public bool          IsZero()     => self.A.IsZero()     && self.B.IsZero()     && self.C.IsZero();
+
         public TTriangle Add<TOther>( TOther value )
             where TOther : struct, ITriangle<TOther> => TTriangle.Create(self.A + value.A, self.B + value.B, self.C + value.C);
         public TTriangle Subtract<TOther>( TOther value )
@@ -70,7 +70,7 @@ public static class Triangles
             where TOther : struct, ITriangle<TOther> => TTriangle.Create(self.A * value.A, self.B * value.B, self.C * value.C);
         public TTriangle Divide<TOther>( TOther value )
             where TOther : struct, ITriangle<TOther> => TTriangle.Create(self.A / value.A, self.B / value.B, self.C / value.C);
-       
+
         public TTriangle Add( (int xOffset, int yOffset)            value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
         public TTriangle Subtract( (int xOffset, int yOffset)       value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
         public TTriangle Divide( (int xOffset, int yOffset)         value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
@@ -83,18 +83,18 @@ public static class Triangles
         public TTriangle Subtract( (double xOffset, double yOffset) value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
         public TTriangle Divide( (double xOffset, double yOffset)   value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
         public TTriangle Multiply( (double xOffset, double yOffset) value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
-      
-        public TTriangle Add( double                                value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
-        public TTriangle Subtract( double                           value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
-        public TTriangle Multiply( double                           value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
-        public TTriangle Divide( double                             value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
-        public TTriangle Add( float                                 value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
-        public TTriangle Subtract( float                            value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
-        public TTriangle Divide( float                              value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
-        public TTriangle Multiply( float                            value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
-        public TTriangle Add( int                                   value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
-        public TTriangle Subtract( int                              value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
-        public TTriangle Divide( int                                value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
-        public TTriangle Multiply( int                              value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
+
+        public TTriangle Add( double      value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
+        public TTriangle Subtract( double value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
+        public TTriangle Multiply( double value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
+        public TTriangle Divide( double   value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
+        public TTriangle Add( float       value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
+        public TTriangle Subtract( float  value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
+        public TTriangle Divide( float    value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
+        public TTriangle Multiply( float  value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
+        public TTriangle Add( int         value ) => TTriangle.Create(self.A + value, self.B + value, self.C + value);
+        public TTriangle Subtract( int    value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
+        public TTriangle Divide( int      value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
+        public TTriangle Multiply( int    value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
     }
 }
