@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 		<NoWarn>$(NoWarn);1591;IDE0079;CS8424;IDE0046;CS1658;CS1591</NoWarn>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>10.0.1</Version>
+		<Version>10.0.2</Version>
 		<Title>Jakar.Shapes</Title>
 		<PackageId>Jakar.Shapes</PackageId>
 		<Authors>Tyler Stegmaier</Authors>
@@ -16,42 +16,42 @@
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/Jakar510/Jakar.Extensions</RepositoryUrl>
-		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Extensions</PackageProjectUrl>
-		<Copyright>https://raw.githubusercontent.com/Jakar510/Jakar.Extensions/master/LICENSE.txt</Copyright>
+		<RepositoryUrl>https://github.com/Jakar510/Jakar.Shapes</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Shapes</PackageProjectUrl>
+		<Copyright>https://raw.githubusercontent.com/Jakar510/Jakar.Shapes/master/LICENSE.txt</Copyright>
 		<PackageTags>Geometry Drawing Jakar Extensions Point Line Circle Rectangle Triangle</PackageTags>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
-		<AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
-		<PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-		<ProduceReferenceAssembly>true</ProduceReferenceAssembly>
-		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<OpenApiGenerateDocuments>False</OpenApiGenerateDocuments>
+		<AccelerateBuildsInVisualStudio>True</AccelerateBuildsInVisualStudio>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+		<EnableNETAnalyzers>True</EnableNETAnalyzers>
 		<NeutralLanguage>en</NeutralLanguage>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<StripSymbols>false</StripSymbols>
-		<IncludeSymbols>true</IncludeSymbols>
-		<IsAotCompatible>true</IsAotCompatible>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<StripSymbols>False</StripSymbols>
+		<IncludeSymbols>True</IncludeSymbols>
+		<IsAotCompatible>True</IsAotCompatible>
 		<OptimizationPreference>Speed</OptimizationPreference>
-		<EventSourceSupport>true</EventSourceSupport>
+		<EventSourceSupport>True</EventSourceSupport>
 		<PackageIcon>icon.png</PackageIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<None Include="..\icon.png">
-			<Pack>true</Pack>
+			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="..\LICENSE.txt">
-			<Pack>true</Pack>
+			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="..\README.md">
-		  <Pack>True</Pack>
-		  <PackagePath>\</PackagePath>
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
 		</None>
 		<None Include="README.md">
-			<Pack>true</Pack>
+			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
 	</ItemGroup>
@@ -59,7 +59,7 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<DocumentationFile>bin\Release\Jakar.Shapes.xml</DocumentationFile>
 		<DefineConstants>DEBUG;TRACE</DefineConstants>
-		<Optimize>true</Optimize>
+		<Optimize>True</Optimize>
 		<IsAotCompatible>True</IsAotCompatible>
 	</PropertyGroup>
 
