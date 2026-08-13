@@ -23,7 +23,7 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
     private static readonly ReadOnlyPoint[] __empty = [];
     public readonly         ReadOnlyPoint[] Points  = points ?? __empty;
 
-     
+
     public ref readonly ReadOnlyPoint this[ int   index ] => ref Points[index];
     public ref readonly ReadOnlyPoint this[ Index index ] => ref Points[index];
     public Spline this[ Range                     index ] { [Pure] get => new(Points[index]); }
@@ -45,6 +45,7 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
     public bool IsValid => !IsEmpty && !IsNaN;
 
 
+    public Spline() : this(null) { }
     public static implicit operator Spline( ReadOnlyPoint[]?               points ) => Create(points);
     [Pure] public static            Spline Create( params ReadOnlyPoint[]? points ) => new(points);
     [Pure] public Spline Round() => new(AsValueEnumerable()
