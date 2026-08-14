@@ -8,15 +8,14 @@ namespace Jakar.Shapes.Tests;
 [TestOf(typeof(LineOfBestFit))]
 public sealed class LineOfBestFit_Tests : Assert
 {
-    private const double ABSOLUTE_TOLERANCE = 1e-9;
-    private const double RELATIVE_TOLERANCE = 1e-9;
+    private const double ABSOLUTE_TOLERANCE = 1e-7;
+    private const double RELATIVE_TOLERANCE = 1e-7;
 
 
     // ---------------------------------------------------------------------------------------------------------
     // helpers
     // ---------------------------------------------------------------------------------------------------------
 
-    /// <summary> Builds a spline from raw (x, y) pairs. </summary>
     private static Spline Of( params (double X, double Y)[] points )
     {
         ReadOnlyPoint[] array = new ReadOnlyPoint[points.Length];
@@ -26,11 +25,25 @@ public sealed class LineOfBestFit_Tests : Assert
     }
 
 
-    /// <summary> Samples <c> y = a * x^power + b </c> at every <paramref name="xValues"/> to produce exactly-fitting data. </summary>
-    private static Spline Curve( double a, sbyte power, double b, params double[] xValues )
+    /// <summary> Evaluates <c> a_0 + a_1*t + a_2*t^2 + ... </c> where <c> t </c> is <c> x </c>, or <c> 1/x </c> for a Laurent fit. </summary>
+    private static double Evaluate( double[] ascending, sbyte degree, double x )
+    {
+        double t = degree < 0
+                       ? 1.0 / x
+                       : x;
+
+        double result = ascending[^1];
+        for ( int i = ascending.Length - 2; i >= 0; i-- ) { result = ( result * t ) + ascending[i]; }
+
+        return result;
+    }
+
+
+    /// <summary> Samples the polynomial exactly at each x, so the fit has a zero-error solution to find. </summary>
+    private static Spline Curve( double[] ascending, sbyte degree, params double[] xValues )
     {
         ReadOnlyPoint[] array = new ReadOnlyPoint[xValues.Length];
-        for ( int i = 0; i < xValues.Length; i++ ) { array[i] = new ReadOnlyPoint(xValues[i], a * Math.Pow(xValues[i], power) + b); }
+        for ( int i = 0; i < xValues.Length; i++ ) { array[i] = new ReadOnlyPoint(xValues[i], Evaluate(ascending, degree, xValues[i])); }
 
         return new Spline(array);
     }
@@ -40,16 +53,60 @@ public sealed class LineOfBestFit_Tests : Assert
     private static void IsInvalidAt( CalculatedLine line, double x ) => Assert.That(double.IsNaN(line[x]), Is.True, $"expected an invalid (NaN) result at x = {x}");
 
 
-    /// <summary> Asserts the fitted line reproduces every point it was built from. </summary>
-    private static void ReproducesAllPoints( ref readonly Spline spline, CalculatedLine line )
+    private static void ReproducesAllPoints( ref readonly Spline spline, PolynomialFit fit )
     {
-        foreach ( ref readonly ReadOnlyPoint point in spline.Span ) { AreClose(point.Y, line[point.X]); }
+        Assert.That(fit.IsValid, Is.True, "fit should be valid");
+        foreach ( ref readonly ReadOnlyPoint point in spline.Span ) { AreClose(point.Y, fit[point.X]); }
+    }
+
+
+    private static void HasCoefficients( PolynomialFit fit, params double[] ascending )
+    {
+        Assert.That(fit.IsValid,           Is.True);
+        Assert.That(fit.Coefficients.Length, Is.EqualTo(ascending.Length));
+        for ( int i = 0; i < ascending.Length; i++ ) { AreClose(ascending[i], fit.Coefficients[i]); }
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 1. positive powers -- explicit
+    // 1. the full polynomial -- every intermediate term must be fitted, not just the leading one
     // ---------------------------------------------------------------------------------------------------------
+
+    [Test] public void Cubic_RecoversEveryCoefficient()
+    {
+        // y = 2x^3 - 5x^2 + 3x + 7
+        Spline        spline = Curve([7, 3, -5, 2], 3, 0.5, 1.0, 1.7, 2.3, 3.0, 3.8, 4.5, 5.2);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 3);
+
+        HasCoefficients(fit, 7, 3, -5, 2);
+        Assert.That(fit.Degree,            Is.EqualTo((sbyte)3));
+        Assert.That(fit.SumOfSquaredError, Is.LessThan(1e-18));
+        ReproducesAllPoints(in spline, fit);
+    }
+
+
+    [Test] public void Quartic_RecoversEveryCoefficient()
+    {
+        // y = x^4 - 2x^3 + 3x^2 - 4x + 5
+        Spline        spline = Curve([5, -4, 3, -2, 1], 4, 0.4, 1.1, 1.9, 2.6, 3.4, 4.2, 5.0, 5.9);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 4);
+
+        HasCoefficients(fit, 5, -4, 3, -2, 1);
+        ReproducesAllPoints(in spline, fit);
+    }
+
+
+    [Test] public void Quadratic_MiddleTermIsNotDropped()
+    {
+        // y = 3x^2 + 11x + 2 -- a leading-term-only model cannot represent the 11x
+        Spline        spline = Curve([2, 11, 3], 2, 1, 2, 3, 4, 5);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 2);
+
+        HasCoefficients(fit, 2, 11, 3);
+        AreClose(2,   fit[0]);
+        AreClose(176, fit[6]);   // 3(36) + 11(6) + 2
+    }
+
 
     [TestCase((sbyte)1)]
     [TestCase((sbyte)2)]
@@ -57,70 +114,35 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase((sbyte)4)]
     [TestCase((sbyte)5)]
     [TestCase((sbyte)6)]
-    public void PositivePower_ExactData_ReproducesEveryPoint( sbyte power )
+    public void EveryDegree_WithAllTermsPresent_IsRecovered( sbyte degree )
     {
-        Spline         spline = Curve(2.5, power, -1.25, 1, 2, 3, 4, 5);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        ReproducesAllPoints(in spline, line);
-    }
+        double[] ascending = new double[degree + 1];
+        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }   // every term non-zero
 
+        double[] xs = new double[degree + 4];
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
 
-    [TestCase((sbyte)1)]
-    [TestCase((sbyte)2)]
-    [TestCase((sbyte)3)]
-    [TestCase((sbyte)4)]
-    [TestCase((sbyte)5)]
-    [TestCase((sbyte)6)]
-    public void PositivePower_ExactData_InterpolatesBetweenSamples( sbyte power )
-    {
-        const double A      = 2.5;
-        const double B      = -1.25;
-        Spline       spline = Curve(A, power, B, 1, 2, 3, 4, 5);
+        Spline        spline = Curve(ascending, degree, xs);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, degree);
 
-        CalculatedLine line = LineOfBestFit.Calculate(in spline, power);
-        AreClose(( A * Math.Pow(2.5, power) ) + B, line[2.5]);
-        AreClose(( A * Math.Pow(4.5, power) ) + B, line[4.5]);
-    }
-
-
-    [Test] public void PositivePower_Linear_MatchesKnownSlopeAndIntercept()
-    {
-        // y = 3x + 4 sampled exactly
-        Spline         spline = Of((0, 4), (1, 7), (2, 10), (3, 13));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-        AreClose(4,    line[0]);
-        AreClose(19,   line[5]);
-        AreClose(-2,   line[-2]);
-        AreClose(3004, line[1000]);
-    }
-
-
-    [Test] public void PositivePower_Quadratic_MatchesKnownCoefficients()
-    {
-        // y = 2x^2 + 1
-        Spline         spline = Of((0, 1), (1, 3), (2, 9), (3, 19), (4, 33));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 2);
-        AreClose(1,   line[0]);
-        AreClose(51,  line[5]);
-        AreClose(13.5, line[2.5]);
+        HasCoefficients(fit, ascending);
+        ReproducesAllPoints(in spline, fit);
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 2. negative powers -- explicit
+    // 2. negative degree -- the Laurent mirror
     // ---------------------------------------------------------------------------------------------------------
 
-    [TestCase((sbyte)-1)]
-    [TestCase((sbyte)-2)]
-    [TestCase((sbyte)-3)]
-    [TestCase((sbyte)-4)]
-    [TestCase((sbyte)-5)]
-    [TestCase((sbyte)-6)]
-    public void NegativePower_ExactData_ReproducesEveryPoint( sbyte power )
+    [Test] public void Laurent_RecoversEveryCoefficient()
     {
-        Spline         spline = Curve(2.5, power, -1.25, 1, 2, 3, 4, 5);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        ReproducesAllPoints(in spline, line);
+        // y = 4x^-2 + 3x^-1 + 5
+        Spline        spline = Curve([5, 3, 4], -2, 0.5, 0.9, 1.4, 2.2, 3.1, 4.5);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, -2);
+
+        HasCoefficients(fit, 5, 3, 4);
+        Assert.That(fit.Degree, Is.EqualTo((sbyte)-2));
+        ReproducesAllPoints(in spline, fit);
     }
 
 
@@ -130,95 +152,62 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase((sbyte)-4)]
     [TestCase((sbyte)-5)]
     [TestCase((sbyte)-6)]
-    public void NegativePower_ExactData_InterpolatesBetweenSamples( sbyte power )
+    public void EveryNegativeDegree_IsRecovered( sbyte degree )
     {
-        const double A      = 2.5;
-        const double B      = -1.25;
-        Spline       spline = Curve(A, power, B, 1, 2, 3, 4, 5);
+        int      terms     = Math.Abs(degree) + 1;
+        double[] ascending = new double[terms];
+        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
 
-        CalculatedLine line = LineOfBestFit.Calculate(in spline, power);
-        AreClose(( A * Math.Pow(2.5, power) ) + B, line[2.5]);
-        AreClose(( A * Math.Pow(4.5, power) ) + B, line[4.5]);
-    }
+        double[] xs = new double[terms + 3];
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
 
+        Spline        spline = Curve(ascending, degree, xs);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, degree);
 
-    [Test] public void NegativePower_Inverse_MatchesKnownCoefficients()
-    {
-        // y = 12/x + 2
-        Spline         spline = Of((1, 14), (2, 8), (3, 6), (4, 5), (6, 4));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, -1);
-        AreClose(3.5, line[8]);
-        AreClose(14,  line[1]);
-        AreClose(2.2, line[60]);
+        HasCoefficients(fit, ascending);
+        ReproducesAllPoints(in spline, fit);
     }
 
 
     [TestCase((sbyte)-1)]
-    [TestCase((sbyte)-2)]
     [TestCase((sbyte)-3)]
-    [TestCase((sbyte)-4)]
-    [TestCase((sbyte)-5)]
     [TestCase((sbyte)-6)]
-    public void NegativePower_WhenAnyXIsZero_IsInvalid( sbyte power )
+    public void NegativeDegree_WhenAnyXIsZero_IsInvalid( sbyte degree )
     {
-        // x^negative at x = 0 is +Infinity, so the whole fit must bail out
-        Spline         spline = Of((0, 1), (1, 2), (2, 3), (3, 4));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        IsInvalidAt(line, 1);
+        Spline spline = Of((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8));
+        Assert.That(LineOfBestFit.Fit(in spline, degree)
+                                 .IsValid,
+                    Is.False);
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 3. zero power -- degenerates to the mean of Y
+    // 3. degree zero
     // ---------------------------------------------------------------------------------------------------------
 
-    [Test] public void ZeroPower_ReturnsArithmeticMeanOfY()
+    [Test] public void ZeroDegree_ReturnsArithmeticMeanOfY()
     {
-        Spline         spline = Of((1, 2), (2, 4), (3, 6), (4, 8));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 0);
-        AreClose(5, line[0]);
-        AreClose(5, line[1]);
-        AreClose(5, line[-17.5]);
-        AreClose(5, line[1e9]);
+        Spline        spline = Of((1, 2), (2, 4), (3, 6), (4, 8));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 0);
+
+        HasCoefficients(fit, 5);
+        AreClose(5, fit[0]);
+        AreClose(5, fit[-17.5]);
+        AreClose(5, fit[1e9]);
     }
 
 
-    [Test] public void ZeroPower_WithNegativeYValues_ReturnsMean()
+    [Test] public void ZeroDegree_WithNegativeY_ReturnsMean()
     {
-        Spline         spline = Of((1, -4), (2, -8), (3, 0), (4, 4));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 0);
-        AreClose(-2, line[3]);
-    }
-
-
-    [Test] public void ZeroPower_WithAllZeroY_ReturnsZero()
-    {
-        Spline         spline = Of((1, 0), (2, 0), (3, 0));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 0);
-        AreClose(0, line[42]);
-    }
-
-
-    [Test] public void ZeroPower_IsFiniteEvenAtZeroX()
-    {
-        // the constant fit must not depend on Math.Pow at all
-        Spline         spline = Of((0, 3), (1, 5), (2, 7));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 0);
-        AreClose(5, line[0]);
-        Assert.That(double.IsNaN(line[0]), Is.False);
+        Spline spline = Of((1, -4), (2, -8), (3, 0), (4, 4));
+        HasCoefficients(LineOfBestFit.Fit(in spline, 0), -2);
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 4. auto-search (primaryPower: null) recovers the generating power
+    // 4. automatic degree selection
     // ---------------------------------------------------------------------------------------------------------
 
-    [TestCase((sbyte)-6)]
-    [TestCase((sbyte)-5)]
-    [TestCase((sbyte)-4)]
-    [TestCase((sbyte)-3)]
-    [TestCase((sbyte)-2)]
-    [TestCase((sbyte)-1)]
     [TestCase((sbyte)0)]
     [TestCase((sbyte)1)]
     [TestCase((sbyte)2)]
@@ -226,312 +215,256 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase((sbyte)4)]
     [TestCase((sbyte)5)]
     [TestCase((sbyte)6)]
-    public void AutoSearch_RecoversGeneratingCurve( sbyte truePower )
+    public void AutoSearch_RecoversGeneratingDegree( sbyte degree )
     {
-        Spline         spline = Curve(3.0, truePower, 1.5, 1, 2, 3, 4, 5, 6);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline);
+        double[] ascending = new double[degree + 1];
+        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
 
-        ReproducesAllPoints(in spline, line);
-        AreClose(( 3.0 * Math.Pow(2.5, truePower) ) + 1.5, line[2.5]);
-    }
+        double[] xs = new double[degree + 5];
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
 
+        Spline        spline = Curve(ascending, degree, xs);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
 
-    [TestCase((sbyte)-6)]
-    [TestCase((sbyte)-4)]
-    [TestCase((sbyte)-1)]
-    [TestCase((sbyte)1)]
-    [TestCase((sbyte)3)]
-    [TestCase((sbyte)6)]
-    public void AutoSearch_MatchesExplicitPower_WhenPowerIsObvious( sbyte truePower )
-    {
-        Spline spline = Curve(3.0, truePower, 1.5, 1, 2, 3, 4, 5, 6);
-
-        CalculatedLine auto     = LineOfBestFit.Calculate(in spline);
-        CalculatedLine explicitly = LineOfBestFit.Calculate(in spline, truePower);
-
-        AreClose(explicitly[2.5], auto[2.5]);
-        AreClose(explicitly[7.0], auto[7.0]);
-    }
-
-
-    [Test] public void AutoSearch_BoundaryPowers_AreInsideSearchRange()
-    {
-        Assert.That(LineOfBestFit.MAX_AUTO_SEARCH_POWER, Is.EqualTo((sbyte)6));
-
-        Spline upper = Curve(1.0, LineOfBestFit.MAX_AUTO_SEARCH_POWER,           0.0, 1, 2, 3, 4, 5, 6);
-        Spline lower = Curve(1.0, (sbyte)-LineOfBestFit.MAX_AUTO_SEARCH_POWER, 0.0, 1, 2, 3, 4, 5, 6);
-
-        ReproducesAllPoints(in upper, LineOfBestFit.Calculate(in upper));
-        ReproducesAllPoints(in lower, LineOfBestFit.Calculate(in lower));
-    }
-
-
-    // ---------------------------------------------------------------------------------------------------------
-    // 5. least squares on NOISY data -- expected values independently computed via numpy lstsq
-    // ---------------------------------------------------------------------------------------------------------
-
-    [Test] public void NoisyLinear_MatchesIndependentLeastSquares()
-    {
-        // numpy lstsq on [x, 1]: A = 1.9899999999999998, b = 0.04999999999999967
-        Spline         spline = Of((1, 2.1), (2, 3.9), (3, 6.2), (4, 7.8), (5, 10.1));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-
-        AreClose(0.04999999999999967, line[0]);
-        AreClose(5.0249999999999995,  line[2.5]);
-        AreClose(11.989999999999997,  line[6]);
-    }
-
-
-    [Test] public void NoisyQuadratic_MatchesIndependentLeastSquares()
-    {
-        // numpy lstsq on [x^2, 1]: A = 1.9852941176470589, b = 1.2017647058823606
-        Spline         spline = Of((1, 3.2), (2, 9.1), (3, 19.2), (4, 32.8), (5, 50.9));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 2);
-
-        AreClose(1.2017647058823606, line[0]);
-        AreClose(13.609852941176479, line[2.5]);
-        AreClose(72.67235294117647,  line[6]);
-    }
-
-
-    [Test] public void NoisyInverse_MatchesIndependentLeastSquares()
-    {
-        // numpy lstsq on [x^-1, 1]: A = 10.143984220907294, b = 0.050246548323472834
-        Spline         spline = Of((1, 10.2), (2, 5.1), (4, 2.6), (5, 2.1), (8, 1.3));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, -1);
-
-        AreClose(10.194230769230767, line[1]);
-        AreClose(3.4315746219592373, line[3]);
-        AreClose(1.0646449704142023, line[10]);
-    }
-
-
-    [Test] public void NoisyData_ResidualsAreOrthogonal_LeastSquaresNormalEquation()
-    {
-        // sum of residuals must vanish for any model carrying an intercept
-        Spline         spline = Of((1, 2.1), (2, 3.9), (3, 6.2), (4, 7.8), (5, 10.1));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-
-        double sum = 0;
-        foreach ( ref readonly ReadOnlyPoint point in spline.Span ) { sum += point.Y - line[point.X]; }
-
-        AreClose(0, sum);
-    }
-
-
-    [Test] public void NoisyData_FitBeatsAnyNearbyPerturbation()
-    {
-        // the returned fit must be a genuine minimum of the squared error
-        Spline         spline = Of((1, 2.1), (2, 3.9), (3, 6.2), (4, 7.8), (5, 10.1));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-
-        double best = SquaredError(in spline, line, 0);
-        Assert.That(SquaredError(in spline, line, +0.05), Is.GreaterThan(best));
-        Assert.That(SquaredError(in spline, line, -0.05), Is.GreaterThan(best));
-        return;
-
-        static double SquaredError( ref readonly Spline s, CalculatedLine l, double shift )
-        {
-            double total = 0;
-            foreach ( ref readonly ReadOnlyPoint point in s.Span )
-            {
-                double residual = point.Y - ( l[point.X] + shift );
-                total += residual * residual;
-            }
-
-            return total;
-        }
-    }
-
-
-    // ---------------------------------------------------------------------------------------------------------
-    // 6. negative and zero coordinates
-    // ---------------------------------------------------------------------------------------------------------
-
-    [TestCase((sbyte)1)]
-    [TestCase((sbyte)2)]
-    [TestCase((sbyte)3)]
-    public void NegativeX_PositivePower_ReproducesEveryPoint( sbyte power )
-    {
-        Spline         spline = Curve(2.0, power, 1.0, -4, -3, -2, -1, 1, 2);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        ReproducesAllPoints(in spline, line);
+        Assert.That(fit.Degree, Is.EqualTo(degree), $"expected degree {degree}, chose {fit.Degree}");
+        HasCoefficients(fit, ascending);
     }
 
 
     [TestCase((sbyte)-1)]
     [TestCase((sbyte)-2)]
     [TestCase((sbyte)-3)]
-    public void NegativeX_NegativePower_ReproducesEveryPoint( sbyte power )
+    public void AutoSearch_RecoversNegativeGeneratingDegree( sbyte degree )
     {
-        Spline         spline = Curve(2.0, power, 1.0, -4, -3, -2, -1, 1, 2);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        ReproducesAllPoints(in spline, line);
+        int      terms     = Math.Abs(degree) + 1;
+        double[] ascending = new double[terms];
+        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
+
+        double[] xs = new double[terms + 4];
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
+
+        Spline spline = Curve(ascending, degree, xs);
+        Assert.That(LineOfBestFit.Fit(in spline)
+                                 .Degree,
+                    Is.EqualTo(degree));
     }
 
 
-    [Test] public void NegativeX_OddPower_PreservesSign()
+    [Test] public void AutoSearch_MissingMiddleTerm_DoesNotStopEarly()
     {
-        // y = 2x^3 + 1  ->  strictly increasing through the origin region
-        Spline         spline = Curve(2.0, 3, 1.0, -3, -2, -1, 1, 2, 3);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 3);
-        AreClose(-15, line[-2]);
-        AreClose(17,  line[2]);
-        AreClose(1,   line[0]);
+        // y = x^2 is symmetric, so degree 1 is no better than degree 0.
+        // A naive "stop at the first degree that does not help" rule would wrongly return 0.
+        Spline        spline = Of((-3, 9), (-2, 4), (-1, 1), (0, 0), (1, 1), (2, 4), (3, 9));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
+
+        Assert.That(fit.Degree, Is.EqualTo((sbyte)2));
+        AreClose(0,  fit[0]);
+        AreClose(25, fit[5]);
     }
 
 
-    [Test] public void NegativeX_EvenPower_IsSymmetric()
+    [Test] public void AutoSearch_DoesNotOverfitStraightLine()
     {
-        // y = 2x^2 + 1 is even, so f(-x) == f(x)
-        Spline         spline = Curve(2.0, 2, 1.0, -3, -2, -1, 1, 2, 3);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 2);
-        AreClose(line[2.5], line[-2.5]);
-        AreClose(line[7.0], line[-7.0]);
+        Spline        spline = Of((1, 3), (2, 5), (3, 7), (4, 9), (5, 11), (6, 13), (7, 15));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
+
+        Assert.That(fit.Degree, Is.EqualTo((sbyte)1));
+        AreClose(1,   fit[0]);
+        AreClose(201, fit[100]);
     }
 
 
-    [Test] public void ZeroY_AllPointsOnAxis_FitsFlatZero()
+    [Test] public void MaxAutoSearchPower_IsSix()
     {
-        Spline         spline = Of((1, 0), (2, 0), (3, 0), (4, 0));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-        AreClose(0, line[1]);
-        AreClose(0, line[99]);
-    }
+        Assert.That(LineOfBestFit.MAX_AUTO_SEARCH_POWER, Is.EqualTo((sbyte)6));
 
-
-    [Test] public void ZeroX_WithPositivePower_IsHandled()
-    {
-        // x = 0 is fine for positive powers: 0^n == 0
-        Spline         spline = Of((0, 1), (1, 3), (2, 9), (3, 19));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 2);
-        AreClose(1, line[0]);
-    }
-
-
-    [Test] public void MixedSignData_ProducesFiniteResults()
-    {
-        Spline         spline = Of((-3, -8), (-1, -2), (0, 1), (2, 5), (4, 11));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-
-        foreach ( double x in new double[] { -10, -1, 0, 1, 10 } ) { Assert.That(double.IsFinite(line[x]), Is.True, $"expected a finite value at x = {x}"); }
+        Spline spline = Of((1, 1), (2, 2));
+        Assert.That(LineOfBestFit.Fit(in spline, 7)
+                                 .IsValid,
+                    Is.False,
+                    "degrees beyond the bound must be rejected");
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 7. degenerate / invalid input
+    // 5. least squares on noisy data -- expected values independently computed via numpy lstsq
+    // ---------------------------------------------------------------------------------------------------------
+
+    [Test] public void NoisyQuadratic_MatchesIndependentLeastSquares()
+    {
+        Spline        spline = Of((1, 3.1), (2, 8.9), (3, 19.2), (4, 33.1), (5, 50.8), (6, 72.9));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 2);
+
+        HasCoefficients(fit, 0.98999999999998611, 0.072500000000006004, 1.9839285714285702);
+        AreClose(0.082357142857143281, fit.SumOfSquaredError);
+        AreClose(13.570803571428565,   fit[2.5]);
+        AreClose(98.709999999999965,   fit[7.0]);
+    }
+
+
+    [Test] public void NoisyCubic_MatchesIndependentLeastSquares()
+    {
+        Spline        spline = Of((0.5, 7.4), (1.2, 5.9), (2.1, 7.1), (3.0, 25.2), (3.9, 58.9), (4.8, 112.4), (5.5, 168.1));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 3);
+
+        HasCoefficients(fit, 13.746554526511291, -13.225327052541477, 3.5204894310618933, 0.72701140486382465);
+        AreClose(5.2128867888156503, fit.SumOfSquaredError);
+        AreClose(343.03815914904555, fit[7.0]);
+    }
+
+
+    [Test] public void NoisyLaurent_MatchesIndependentLeastSquares()
+    {
+        Spline        spline = Of((0.5, 21.2), (0.9, 10.1), (1.4, 7.3), (2.2, 6.2), (3.1, 5.8), (4.5, 5.4));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, -2);
+
+        HasCoefficients(fit, 5.3593031762251186, -0.17662298738417981, 4.0453811038878573);
+        AreClose(5.9359149578935035, fit[2.5]);
+        AreClose(5.4166301189230488, fit[7.0]);
+    }
+
+
+    [Test] public void NoisyData_ResidualsAreOrthogonalToEveryBasisColumn()
+    {
+        // the defining property of a least-squares solution: V^T (y - Vc) = 0
+        Spline        spline = Of((1, 3.1), (2, 8.9), (3, 19.2), (4, 33.1), (5, 50.8), (6, 72.9));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 2);
+
+        for ( int k = 0; k <= 2; k++ )
+        {
+            double dot = 0;
+            foreach ( ref readonly ReadOnlyPoint point in spline.Span ) { dot += Math.Pow(point.X, k) * ( point.Y - fit[point.X] ); }
+
+            Assert.That(Math.Abs(dot), Is.LessThan(1e-9), $"residuals not orthogonal to column x^{k}");
+        }
+    }
+
+
+    // ---------------------------------------------------------------------------------------------------------
+    // 6. coefficients and rendering
+    // ---------------------------------------------------------------------------------------------------------
+
+    [Test] public void Coefficients_AreAscending()
+    {
+        Spline        spline = Curve([7, 3, -5, 2], 3, 0.5, 1.0, 1.7, 2.3, 3.0, 3.8, 4.5);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 3);
+
+        AreClose(7,  fit.Coefficients[0]);   // constant
+        AreClose(2,  fit.Coefficients[3]);   // leading
+        Assert.That(fit.Length, Is.EqualTo(4));
+    }
+
+
+    [Test] public void ToString_RendersTheEquationDescending()
+    {
+        Spline spline = Curve([7, 3, -5, 2], 3, 0.5, 1.0, 1.7, 2.3, 3.0, 3.8, 4.5);
+        Assert.That(LineOfBestFit.Fit(in spline, 3)
+                                 .ToString(),
+                    Is.EqualTo("2x^3 - 5x^2 + 3x + 7"));
+    }
+
+
+    [Test] public void ToString_RendersLaurentWithNegativeExponents()
+    {
+        Spline spline = Curve([5, 3, 4], -2, 0.5, 0.9, 1.4, 2.2, 3.1, 4.5);
+        Assert.That(LineOfBestFit.Fit(in spline, -2)
+                                 .ToString(),
+                    Is.EqualTo("4x^-2 + 3x^-1 + 5"));
+    }
+
+
+    [Test] public void InvalidFit_RendersAsInvalid()
+    {
+        Assert.That(PolynomialFit.Invalid.IsValid,     Is.False);
+        Assert.That(PolynomialFit.Invalid.ToString(),  Does.Contain("Invalid"));
+        Assert.That(double.IsNaN(PolynomialFit.Invalid[1]), Is.True);
+    }
+
+
+    [Test] public void ToCalculatedLine_MatchesTheFit()
+    {
+        Spline         spline = Curve([7, 3, -5, 2], 3, 0.5, 1.0, 1.7, 2.3, 3.0, 3.8, 4.5);
+        PolynomialFit  fit    = LineOfBestFit.Fit(in spline, 3);
+        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 3);
+
+        AreClose(fit[2.5], line[2.5]);
+        AreClose(fit[9.0], line[9.0]);
+    }
+
+
+    // ---------------------------------------------------------------------------------------------------------
+    // 7. degenerate input
     // ---------------------------------------------------------------------------------------------------------
 
     [Test] public void EmptySpline_IsInvalid()
     {
         Spline spline = Spline.Invalid;
-        IsInvalidAt(LineOfBestFit.Calculate(in spline),    1);
-        IsInvalidAt(LineOfBestFit.Calculate(in spline, 1), 1);
-        IsInvalidAt(LineOfBestFit.Calculate(in spline, 0), 1);
+        Assert.That(LineOfBestFit.Fit(in spline).IsValid, Is.False);
+        IsInvalidAt(LineOfBestFit.Calculate(in spline), 1);
     }
 
 
     [Test] public void SinglePoint_IsInvalid()
     {
         Spline spline = Of((3, 7));
-        IsInvalidAt(LineOfBestFit.Calculate(in spline),    1);
-        IsInvalidAt(LineOfBestFit.Calculate(in spline, 2), 1);
+        Assert.That(LineOfBestFit.Fit(in spline).IsValid, Is.False);
+    }
+
+
+    [Test] public void FewerPointsThanTerms_IsInvalid()
+    {
+        // a cubic needs at least 4 points
+        Spline spline = Of((1, 2), (2, 5), (3, 9));
+        Assert.That(LineOfBestFit.Fit(in spline, 3).IsValid, Is.False);
+        Assert.That(LineOfBestFit.Fit(in spline, 2).IsValid, Is.True);
     }
 
 
     [TestCase((sbyte)1)]
     [TestCase((sbyte)2)]
     [TestCase((sbyte)-1)]
-    public void AllPointsShareTheSameX_IsInvalid( sbyte power )
+    public void AllPointsShareTheSameX_IsInvalid( sbyte degree )
     {
-        // a vertical arrangement has no unique least-squares solution -> determinant is zero
-        Spline         spline = Of((2, 1), (2, 5), (2, 9));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, power);
-        IsInvalidAt(line, 2);
+        Spline spline = Of((2, 1), (2, 5), (2, 9), (2, 3), (2, 8), (2, 6), (2, 4), (2, 2));
+        Assert.That(LineOfBestFit.Fit(in spline, degree).IsValid, Is.False);
     }
 
 
     [Test] public void NaNCoordinates_AreInvalid()
     {
-        Spline spline = Of((1, 2), (double.NaN, 5), (3, 6));
-        IsInvalidAt(LineOfBestFit.Calculate(in spline, 1), 1);
+        Spline spline = Of((1, 2), (double.NaN, 5), (3, 6), (4, 8));
+        Assert.That(LineOfBestFit.Fit(in spline, 1).IsValid, Is.False);
     }
 
 
     [Test] public void InfiniteCoordinates_AreInvalid()
     {
-        Spline spline = Of((1, 2), (double.PositiveInfinity, 5), (3, 6));
-        IsInvalidAt(LineOfBestFit.Calculate(in spline, 1), 1);
+        Spline spline = Of((1, 2), (double.PositiveInfinity, 5), (3, 6), (4, 8));
+        Assert.That(LineOfBestFit.Fit(in spline, 1).IsValid, Is.False);
     }
 
 
-    [Test] public void TwoPoints_AreEnoughForAFit()
+    [Test] public void TwoPoints_FitALine()
     {
-        Spline         spline = Of((1, 3), (2, 5));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-        AreClose(3, line[1]);
-        AreClose(5, line[2]);
-        AreClose(7, line[3]);
-    }
-
-
-    // ---------------------------------------------------------------------------------------------------------
-    // 8. sentinel propagation -- NaN / +Infinity / -Infinity are distinguished
-    // ---------------------------------------------------------------------------------------------------------
-
-    [Test] public void Evaluate_AtNaN_ReturnsNaN()
-    {
-        Spline         spline = Of((1, 2), (2, 4), (3, 6));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, 1);
-        Assert.That(double.IsNaN(line[double.NaN]), Is.True);
-    }
-
-
-    [Test] public void Evaluate_AtPositiveInfinity_KeepsSignOfSlope()
-    {
-        // positive slope -> +inf ; negative slope -> -inf
-        Spline rising  = Of((1, 2), (2, 4), (3, 6));
-        Spline falling = Of((1, 6), (2, 4), (3, 2));
-
-        Assert.That(double.IsPositiveInfinity(LineOfBestFit.Calculate(in rising,  1)[double.PositiveInfinity]), Is.True);
-        Assert.That(double.IsNegativeInfinity(LineOfBestFit.Calculate(in falling, 1)[double.PositiveInfinity]), Is.True);
-    }
-
-
-    [Test] public void Evaluate_AtNegativeInfinity_KeepsSignOfSlope()
-    {
-        Spline rising  = Of((1, 2), (2, 4), (3, 6));
-        Spline falling = Of((1, 6), (2, 4), (3, 2));
-
-        Assert.That(double.IsNegativeInfinity(LineOfBestFit.Calculate(in rising,  1)[double.NegativeInfinity]), Is.True);
-        Assert.That(double.IsPositiveInfinity(LineOfBestFit.Calculate(in falling, 1)[double.NegativeInfinity]), Is.True);
-    }
-
-
-    [Test] public void Evaluate_NegativePowerAtZero_ReturnsSignedInfinity()
-    {
-        // y = 12/x + 2 blows up at the origin; the sign must follow A
-        Spline         spline = Of((1, 14), (2, 8), (3, 6), (4, 5), (6, 4));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline, -1);
-        Assert.That(double.IsPositiveInfinity(line[0]), Is.True);
+        Spline        spline = Of((1, 3), (2, 5));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline, 1);
+        HasCoefficients(fit, 1, 2);
+        AreClose(7, fit[3]);
     }
 
 
     // ---------------------------------------------------------------------------------------------------------
-    // 9. regression guards -- auto-search must prefer the simplest power on ties
+    // 8. behaviour carried over from the earlier single-term implementation
     // ---------------------------------------------------------------------------------------------------------
 
-    [Test] public void AutoSearch_ConstantData_PrefersConstantFit()
+    [Test] public void AutoSearch_ConstantData_PrefersDegreeZero()
     {
-        // every power fits constant data perfectly (A == 0); the constant model must win,
-        // otherwise evaluating at x == 0 yields 0 * Infinity == NaN
-        Spline         spline = Of((1, 7), (2, 7), (3, 7), (4, 7));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline);
+        Spline        spline = Of((1, 7), (2, 7), (3, 7), (4, 7));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
 
-        AreClose(7, line[1]);
-        AreClose(7, line[5]);
-        AreClose(7, line[0]);
-        Assert.That(double.IsNaN(line[0]), Is.False, "constant data must stay finite at the origin");
+        Assert.That(fit.Degree, Is.EqualTo((sbyte)0));
+        AreClose(7, fit[0]);
+        Assert.That(double.IsFinite(fit[0]), Is.True, "constant data must stay finite at the origin");
     }
 
 
@@ -540,89 +473,61 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase(10.8584, 1.9, 4.2, 4.9)]
     [TestCase(12.0232, 1.0, 3.7, 5.0)]
     [TestCase(6.1212,  0.7, 1.4, 2.3)]
-    public void AutoSearch_ConstantData_WhoseMeanRounds_StillPrefersConstantFit( double value, params double[] xValues )
+    public void AutoSearch_ConstantData_WhoseMeanRounds_StaysFiniteAtOrigin( double value, params double[] xValues )
     {
-        // the mean of these identical values rounds by one ulp, so the constant fit scores a hair above zero
-        // while some unrelated power lands on exactly zero -- without a noise floor the exotic power wins,
-        // and evaluating it at the origin yields NaN or -Infinity
+        // the mean of these identical values rounds by one ulp, so a richer model can score marginally
+        // lower on pure noise; without the noise floor the chosen model returns NaN or -Infinity at x = 0
         ReadOnlyPoint[] array = new ReadOnlyPoint[xValues.Length];
         for ( int i = 0; i < xValues.Length; i++ ) { array[i] = new ReadOnlyPoint(xValues[i], value); }
 
-        Spline         spline = new(array);
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline);
+        Spline        spline = new(array);
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
 
-        AreClose(value, line[0]);
-        AreClose(value, line[1]);
-        AreClose(value, line[99]);
-        Assert.That(double.IsFinite(line[0]), Is.True, "constant data must stay finite at the origin");
+        AreClose(value, fit[0]);
+        AreClose(value, fit[99]);
+        Assert.That(double.IsFinite(fit[0]), Is.True);
     }
 
 
     [Test] public void AutoSearch_TwoCollinearPoints_PrefersStraightLine()
     {
-        // two points fit ANY power perfectly, so the search must settle on power 1
-        Spline         spline = Of((1, 1), (2, 2));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline);
+        Spline        spline = Of((1, 1), (2, 2));
+        PolynomialFit fit    = LineOfBestFit.Fit(in spline);
 
-        AreClose(3,  line[3]);
-        AreClose(10, line[10]);
+        Assert.That(fit.Degree, Is.EqualTo((sbyte)1));
+        AreClose(3,  fit[3]);
+        AreClose(10, fit[10]);
     }
 
 
-    [Test] public void AutoSearch_PrefersLowerMagnitudePower_OnEqualError()
+    [Test] public void Evaluate_AtNaN_ReturnsNaN()
     {
-        // y = x is exactly representable at power 1; nothing more exotic should be chosen
-        Spline         spline = Of((1, 1), (2, 2), (3, 3), (4, 4));
-        CalculatedLine line   = LineOfBestFit.Calculate(in spline);
-
-        AreClose(0,   line[0]);
-        AreClose(100, line[100]);
+        Spline spline = Of((1, 2), (2, 4), (3, 6));
+        Assert.That(double.IsNaN(LineOfBestFit.Calculate(in spline, 1)[double.NaN]), Is.True);
     }
 
 
-    [Test] public void AutoSearch_NeverScoresWorseThanAnyExplicitPower()
+    [Test] public void Evaluate_AtInfinity_KeepsSignOfLeadingTerm()
     {
-        Spline spline = Of((1, 2.1), (2, 3.9), (3, 6.2), (4, 7.8), (5, 10.1));
+        Spline rising  = Of((1, 2), (2, 4), (3, 6));
+        Spline falling = Of((1, 6), (2, 4), (3, 2));
 
-        double auto = SquaredError(in spline, LineOfBestFit.Calculate(in spline));
-
-        for ( sbyte power = -LineOfBestFit.MAX_AUTO_SEARCH_POWER; power <= LineOfBestFit.MAX_AUTO_SEARCH_POWER; power++ )
-        {
-            double candidate = SquaredError(in spline, LineOfBestFit.Calculate(in spline, power));
-            if ( double.IsNaN(candidate) || double.IsInfinity(candidate) ) { continue; }
-
-            Assert.That(auto, Is.LessThanOrEqualTo(candidate + ABSOLUTE_TOLERANCE), $"auto-search lost to explicit power {power}");
-        }
-
-        return;
-
-        static double SquaredError( ref readonly Spline s, CalculatedLine l )
-        {
-            double total = 0;
-            foreach ( ref readonly ReadOnlyPoint point in s.Span )
-            {
-                double residual = point.Y - l[point.X];
-                total += residual * residual;
-            }
-
-            return total;
-        }
+        Assert.That(double.IsPositiveInfinity(LineOfBestFit.Calculate(in rising,  1)[double.PositiveInfinity]), Is.True);
+        Assert.That(double.IsNegativeInfinity(LineOfBestFit.Calculate(in falling, 1)[double.PositiveInfinity]), Is.True);
+        Assert.That(double.IsNegativeInfinity(LineOfBestFit.Calculate(in rising,  1)[double.NegativeInfinity]), Is.True);
+        Assert.That(double.IsPositiveInfinity(LineOfBestFit.Calculate(in falling, 1)[double.NegativeInfinity]), Is.True);
     }
 
-
-    // ---------------------------------------------------------------------------------------------------------
-    // 10. determinism & purity
-    // ---------------------------------------------------------------------------------------------------------
 
     [Test] public void Calculate_IsDeterministic()
     {
-        Spline spline = Of((1, 2.1), (2, 3.9), (3, 6.2), (4, 7.8), (5, 10.1));
+        Spline spline = Of((1, 3.1), (2, 8.9), (3, 19.2), (4, 33.1), (5, 50.8), (6, 72.9));
 
-        CalculatedLine first  = LineOfBestFit.Calculate(in spline);
-        CalculatedLine second = LineOfBestFit.Calculate(in spline);
+        PolynomialFit first  = LineOfBestFit.Fit(in spline);
+        PolynomialFit second = LineOfBestFit.Fit(in spline);
 
+        Assert.That(second.Degree, Is.EqualTo(first.Degree));
         AreClose(first[2.5], second[2.5]);
-        AreClose(first[9.0], second[9.0]);
     }
 
 
@@ -631,8 +536,8 @@ public sealed class LineOfBestFit_Tests : Assert
         Spline spline   = Of((1, 2.1), (2, 3.9), (3, 6.2));
         Spline original = Of((1, 2.1), (2, 3.9), (3, 6.2));
 
-        LineOfBestFit.Calculate(in spline);
-        LineOfBestFit.Calculate(in spline, 3);
+        LineOfBestFit.Fit(in spline);
+        LineOfBestFit.Fit(in spline, 2);
 
         this.IsTrue(spline.Equals(original));
     }

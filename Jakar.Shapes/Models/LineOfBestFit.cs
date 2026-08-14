@@ -1,73 +1,189 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
+using System.Buffers;
+
+
+
 namespace Jakar.Shapes;
 
 
 /// <summary>
-/// Fits a power-regression "line of best fit" to a <see cref="Spline"/>'s points using least squares:
-/// <c> y = A * x^primaryPower + b </c>.
+/// Least-squares polynomial regression over a <see cref="Spline"/>'s points.
 /// <para>
-/// When <c>primaryPower</c> is <see langword="null"/>, every whole power in
-/// <c>[-<see cref="MAX_AUTO_SEARCH_POWER"/>, +<see cref="MAX_AUTO_SEARCH_POWER"/>]</c> is tried and the one with
-/// the lowest sum-of-squared-error is returned. Candidates are visited in order of ascending magnitude
-/// (<c>0, 1, -1, 2, -2, ...</c>) so that when several powers fit equally well the simplest one wins.
+/// A positive <c> primaryPower </c> of <c> d </c> fits the FULL polynomial of that degree --
+/// <c> a_d*x^d + a_(d-1)*x^(d-1) + ... + a_1*x + a_0 </c> -- not just the leading term and a constant.
+/// A negative <c> d </c> fits the Laurent mirror <c> a_d*x^-d + ... + a_1*x^-1 + a_0 </c>, and <c> 0 </c> fits the
+/// constant <c> a_0 </c> (the mean of Y).
+/// </para>
+/// <para>
+/// When <c> primaryPower </c> is <see langword="null"/> the degree is chosen automatically. Because polynomial models
+/// are nested -- a degree-6 fit can always reproduce a degree-3 fit -- raw squared error never rises with degree and
+/// would always select the maximum. Instead the lowest degree is chosen that no higher degree improves on
+/// significantly, measured by an F-ratio against the residual variance. On data that lies exactly on a polynomial this
+/// recovers the generating degree; on noisy data it prefers the simplest equation that explains the spread.
+/// </para>
+/// <para>
+/// Coefficients are solved by Householder QR on the Vandermonde matrix rather than by normal equations. Normal
+/// equations square the condition number and lose up to eight significant digits at degree 6; QR holds machine
+/// precision across the same inputs.
 /// </para>
 /// </summary>
 public static class LineOfBestFit
 {
-    /// <summary> Inclusive bound on the magnitude of the power searched when <c>primaryPower</c> is <see langword="null"/>. </summary>
+    /// <summary> Inclusive bound on the magnitude of the degree searched when <c> primaryPower </c> is <see langword="null"/>. </summary>
     public const sbyte MAX_AUTO_SEARCH_POWER = 6;
 
-    /// <summary> A candidate must beat the incumbent by this relative margin to replace it, so float noise never outranks a simpler power. </summary>
-    private const double RELATIVE_IMPROVEMENT = 1e-12;
+    /// <summary> Maximum term count for any candidate, i.e. <c> MAX_AUTO_SEARCH_POWER + 1 </c>. </summary>
+    private const int MAX_TERMS = MAX_AUTO_SEARCH_POWER + 1;
 
-    /// <summary> Machine epsilon -- the gap between 1.0 and the next <see cref="double"/>. Note this is NOT <see cref="double.Epsilon"/>, which is the smallest subnormal. </summary>
+    /// <summary> Candidate count across the whole search: degree 0, then +/-1 through +/-<see cref="MAX_AUTO_SEARCH_POWER"/>. </summary>
+    private const int CANDIDATE_COUNT = ( 2 * MAX_AUTO_SEARCH_POWER ) + 1;
+
+    /// <summary>
+    /// F-ratio a higher degree must exceed before it is considered a genuine improvement. Raising this favours simpler
+    /// equations; lowering it admits more terms. 4.0 is the conventional ~5% significance threshold.
+    /// </summary>
+    private const double SIGNIFICANCE_THRESHOLD = 4.0;
+
+    /// <summary> Machine epsilon -- the gap between 1.0 and the next <see cref="double"/>. NOT <see cref="double.Epsilon"/>, which is the smallest subnormal. </summary>
     private const double MACHINE_EPSILON = 2.220446049250313E-16;
 
     /// <summary> Slack multiplier over the theoretical rounding bound, covering accumulation across the sums. </summary>
     private const double NOISE_FLOOR_SLACK = 16.0;
 
+    /// <summary> Pivots below this are treated as rank deficiency. </summary>
+    private const double RANK_TOLERANCE = 1e-300;
 
-    [Pure] public static CalculatedLine Calculate( ref readonly Spline line, sbyte? primaryPower = null )
+    /// <summary> Point count above which scratch buffers come from <see cref="ArrayPool{T}"/> instead of the stack. </summary>
+    private const int STACK_LIMIT = 128;
+
+
+    /// <summary> Fits the best equation and returns it as an evaluable line. See <see cref="Fit"/> for the coefficients. </summary>
+    [Pure] public static CalculatedLine Calculate( ref readonly Spline line, sbyte? primaryPower = null ) => Fit(in line, primaryPower).ToCalculatedLine();
+
+
+    /// <summary>
+    /// Fits the best equation and returns its coefficients, degree and residual error.
+    /// </summary>
+    /// <param name="line"> Points to fit. </param>
+    /// <param name="primaryPower"> Degree to fit, or <see langword="null"/> to choose one automatically. </param>
+    [Pure] public static PolynomialFit Fit( ref readonly Spline line, sbyte? primaryPower = null )
     {
-        if ( line.IsEmpty ) { return CalculatedLine.Invalid; }
+        if ( line.IsEmpty ) { return PolynomialFit.Invalid; }
 
         ReadOnlySpan<ReadOnlyPoint> points = line.Span;
 
-        return primaryPower is { } power
-                   ? Fit(points, power)
+        return primaryPower is { } degree
+                   ? FitDegree(points, degree)
                    : FindBestFit(points);
     }
 
 
-    [Pure] private static CalculatedLine FindBestFit( ReadOnlySpan<ReadOnlyPoint> points )
+    [Pure] private static PolynomialFit FitDegree( ReadOnlySpan<ReadOnlyPoint> points, sbyte degree )
     {
-        double         noiseFloor = GetNoiseFloor(points);
-        CalculatedLine best       = CalculatedLine.Invalid;
-        double         bestError  = double.PositiveInfinity;
+        if ( degree is > MAX_AUTO_SEARCH_POWER or < -MAX_AUTO_SEARCH_POWER ) { return PolynomialFit.Invalid; }
 
-        for ( int i = 0; i <= 2 * MAX_AUTO_SEARCH_POWER; i++ )
-        {
-            sbyte power = GetSearchPower(i);
+        Span<double> coefficients = stackalloc double[MAX_TERMS];
 
-            CalculatedLine candidate = Fit(points, power);
-            double         error     = SumSquaredError(points, candidate);
-            if ( error >= ( bestError * ( 1.0 - RELATIVE_IMPROVEMENT ) ) - noiseFloor ) { continue; }
-
-            bestError = error;
-            best      = candidate;
-        }
-
-        return best;
+        return TrySolve(points, degree, coefficients, out int terms, out double error)
+                   ? new PolynomialFit(coefficients[..terms].ToArray(), degree, error)
+                   : PolynomialFit.Invalid;
     }
 
 
-    /// <summary>
-    /// The squared-error level below which two candidates are indistinguishable given <see cref="double"/> precision.
-    /// Without this, perfectly constant data whose mean happens to round by one ulp scores a hair worse than some
-    /// unrelated power that lands on exactly zero, and the exotic power wins on pure noise.
-    /// </summary>
+    /// <summary> Maps a search index onto the degrees <c> 0, 1, -1, 2, -2, ... </c> so simpler equations are considered first. </summary>
+    [Pure] private static sbyte GetSearchDegree( int index ) => (sbyte)( ( index + 1 ) / 2 * ( index % 2 == 0
+                                                                                                   ? -1
+                                                                                                   : 1 ) );
+
+
+    [Pure] private static PolynomialFit FindBestFit( ReadOnlySpan<ReadOnlyPoint> points )
+    {
+        int cap = Math.Min(MAX_AUTO_SEARCH_POWER, points.Length - 1);
+
+        Span<double> allCoefficients = stackalloc double[CANDIDATE_COUNT * MAX_TERMS];
+        Span<double> errors          = stackalloc double[CANDIDATE_COUNT];
+        Span<int>    termCounts      = stackalloc int[CANDIDATE_COUNT];
+        Span<sbyte>  degrees         = stackalloc sbyte[CANDIDATE_COUNT];
+        int          found           = 0;
+        double       best            = double.PositiveInfinity;
+
+        for ( int i = 0; i < CANDIDATE_COUNT; i++ )
+        {
+            sbyte degree = GetSearchDegree(i);
+            if ( Math.Abs(degree) > cap ) { continue; }
+
+            Span<double> slot = allCoefficients.Slice(found * MAX_TERMS, MAX_TERMS);
+            if ( !TrySolve(points, degree, slot, out int terms, out double error) ) { continue; }
+
+            errors[found]     = error;
+            termCounts[found] = terms;
+            degrees[found]    = degree;
+            found++;
+
+            if ( error < best ) { best = error; }
+        }
+
+        if ( found is 0 ) { return PolynomialFit.Invalid; }
+
+        double floor = GetNoiseFloor(points);
+
+        // an exact fit exists: take the simplest degree that reaches it
+        if ( best <= floor )
+        {
+            for ( int i = 0; i < found; i++ )
+            {
+                if ( errors[i] <= floor ) { return Build(allCoefficients, termCounts, degrees, errors, i); }
+            }
+        }
+
+        // otherwise take the simplest degree that no higher degree significantly improves upon
+        for ( int i = 0; i < found; i++ )
+        {
+            if ( IsBeaten(points.Length, errors, termCounts, degrees, found, i, floor) ) { continue; }
+
+            return Build(allCoefficients, termCounts, degrees, errors, i);
+        }
+
+        return Build(allCoefficients, termCounts, degrees, errors, 0);
+    }
+
+
+    /// <summary> True when some higher-degree candidate reduces the error by more than chance would explain. </summary>
+    [Pure]
+    private static bool IsBeaten( int pointCount, ReadOnlySpan<double> errors, ReadOnlySpan<int> termCounts, ReadOnlySpan<sbyte> degrees, int found, int index, double floor )
+    {
+        double error = errors[index];
+
+        for ( int j = 0; j < found; j++ )
+        {
+            if ( Math.Abs(degrees[j]) <= Math.Abs(degrees[index]) ) { continue; }
+
+            int extra = Math.Abs(degrees[j]) - Math.Abs(degrees[index]);
+            int dof   = pointCount - termCounts[j];
+            if ( dof <= 0 || extra <= 0 ) { continue; }
+
+            double richer = Math.Max(errors[j], floor);
+            if ( richer <= 0 ) { continue; }
+
+            double ratio = ( ( error - errors[j] ) / extra ) / ( richer / dof );
+            if ( ratio > SIGNIFICANCE_THRESHOLD ) { return true; }
+        }
+
+        return false;
+    }
+
+
+    [Pure]
+    private static PolynomialFit Build( ReadOnlySpan<double> allCoefficients, ReadOnlySpan<int> termCounts, ReadOnlySpan<sbyte> degrees, ReadOnlySpan<double> errors, int index ) =>
+        new(allCoefficients.Slice(index * MAX_TERMS, termCounts[index])
+                           .ToArray(),
+            degrees[index],
+            errors[index]);
+
+
+    /// <summary> The squared-error level below which two candidates are indistinguishable given <see cref="double"/> precision. </summary>
     [Pure] private static double GetNoiseFloor( ReadOnlySpan<ReadOnlyPoint> points )
     {
         double sumOfSquares = 0.0;
@@ -81,88 +197,176 @@ public static class LineOfBestFit
     }
 
 
-    /// <summary> Maps a search index onto the powers <c>0, 1, -1, 2, -2, ...</c> so simpler models are considered first. </summary>
-    [Pure] private static sbyte GetSearchPower( int index ) => (sbyte)( ( index + 1 ) / 2 * ( index % 2 == 0
-                                                                                                  ? -1
-                                                                                                  : 1 ) );
-
-
-    [Pure] private static CalculatedLine Fit( ReadOnlySpan<ReadOnlyPoint> points, sbyte power )
+    /// <summary>
+    /// Solves the least-squares system for one degree by Householder QR on the Vandermonde matrix.
+    /// </summary>
+    private static bool TrySolve( ReadOnlySpan<ReadOnlyPoint> points, sbyte degree, Span<double> coefficients, out int terms, out double sumOfSquaredError )
     {
-        if ( points.Length < 2 ) { return CalculatedLine.Invalid; }
-        if ( power == 0 ) { return FitConstant(points); }
+        terms             = Math.Abs(degree) + 1;
+        sumOfSquaredError = double.PositiveInfinity;
 
-        double S_u2 = 0.0;
-        double S_u  = 0.0;
-        double S_uy = 0.0;
-        double S_y  = 0.0;
-        int    n    = 0;
+        int rows = points.Length;
+        if ( rows < terms ) { return false; }
 
-        foreach ( ref readonly ReadOnlyPoint point in points )
+        int       cells  = rows * terms;
+        double[]? rented = rows > STACK_LIMIT
+                               ? ArrayPool<double>.Shared.Rent(cells + ( 2 * rows ))
+                               : null;
+
+        Span<double> scratch = rented is null
+                                   ? stackalloc double[( STACK_LIMIT * MAX_TERMS ) + ( 2 * STACK_LIMIT )]
+                                   : rented;
+
+        try
         {
-            double u = Math.Pow(point.X, power);
-            if ( double.IsNaN(u) || double.IsInfinity(u) ) { return CalculatedLine.Invalid; }
+            Span<double> matrix = scratch[..cells];
+            Span<double> rhs    = scratch.Slice(cells,        rows);
+            Span<double> vector = scratch.Slice(cells + rows, rows);
 
-            S_u2 += u * u;
-            S_u  += u;
-            S_uy += u * point.Y;
-            S_y  += point.Y;
-            n++;
+            if ( !TryBuildVandermonde(points, degree, terms, matrix, rhs) ) { return false; }
+            if ( !TryDecompose(rows, terms, matrix, rhs, vector) ) { return false; }
+            if ( !TryBackSubstitute(rows, terms, matrix, rhs, coefficients) ) { return false; }
+
+            sumOfSquaredError = Score(points, degree, terms, coefficients);
+            return double.IsFinite(sumOfSquaredError);
         }
-
-        double det = S_u2 * n - S_u * S_u;
-        if ( det == 0.0 ) { return CalculatedLine.Invalid; }
-
-        double A = ( n * S_uy - S_u * S_y ) / det;
-        double b = ( S_u2 * S_y - S_u * S_uy ) / det;
-        if ( double.IsNaN(A) || double.IsInfinity(A) || double.IsNaN(b) || double.IsInfinity(b) ) { return CalculatedLine.Invalid; }
-
-        return CalculatedLine.Create(Evaluate);
-
-        double Evaluate( double x )
+        finally
         {
-            double u         = Math.Pow(x, power);
-            double predicted = A * u + b;
-
-            if ( double.IsNaN(predicted) ) { return double.NaN; }
-
-            if ( double.IsPositiveInfinity(predicted) ) { return double.PositiveInfinity; }
-
-            if ( double.IsNegativeInfinity(predicted) ) { return double.NegativeInfinity; }
-
-            return predicted;
+            if ( rented is not null ) { ArrayPool<double>.Shared.Return(rented); }
         }
     }
 
 
-    [Pure] private static CalculatedLine FitConstant( ReadOnlySpan<ReadOnlyPoint> points )
+    private static bool TryBuildVandermonde( ReadOnlySpan<ReadOnlyPoint> points, sbyte degree, int terms, Span<double> matrix, Span<double> rhs )
     {
-        double sum = 0.0;
-        foreach ( ref readonly ReadOnlyPoint point in points ) { sum += point.Y; }
+        for ( int row = 0; row < points.Length; row++ )
+        {
+            double y = points[row].Y;
+            if ( !double.IsFinite(y) ) { return false; }
 
-        double average = sum / points.Length;
-        if ( double.IsNaN(average) || double.IsInfinity(average) ) { return CalculatedLine.Invalid; }
+            double t = degree < 0
+                           ? 1.0 / points[row].X
+                           : points[row].X;
 
-        return CalculatedLine.Create(_ => average);
+            if ( !double.IsFinite(t) ) { return false; }
+
+            double value = 1.0;
+            int    start = row * terms;
+
+            for ( int column = 0; column < terms; column++ )
+            {
+                if ( !double.IsFinite(value) ) { return false; }
+
+                matrix[start + column] =  value;
+                value                  *= t;
+            }
+
+            rhs[row] = y;
+        }
+
+        return true;
     }
 
 
-    /// <summary> Scores a candidate. Any non-finite prediction disqualifies it via <see cref="double.PositiveInfinity"/>, which keeps the comparison in <see cref="FindBestFit"/> NaN-safe. </summary>
-    [Pure] private static double SumSquaredError( ReadOnlySpan<ReadOnlyPoint> points, CalculatedLine line )
+    /// <summary> In-place Householder reduction of <paramref name="matrix"/> to upper triangular, applying the same reflectors to <paramref name="rhs"/>. </summary>
+    private static bool TryDecompose( int rows, int terms, Span<double> matrix, Span<double> rhs, Span<double> vector )
     {
-        double sum = 0.0;
+        for ( int k = 0; k < terms; k++ )
+        {
+            double norm = 0.0;
+            for ( int row = k; row < rows; row++ )
+            {
+                double cell = matrix[( row * terms ) + k];
+                norm += cell * cell;
+            }
+
+            norm = Math.Sqrt(norm);
+            if ( !double.IsFinite(norm) || norm < RANK_TOLERANCE ) { return false; }
+
+            for ( int row = k; row < rows; row++ ) { vector[row] = matrix[( row * terms ) + k]; }
+
+            double alpha = vector[k] >= 0
+                               ? -norm
+                               : norm;
+
+            vector[k] -= alpha;
+
+            double squared = 0.0;
+            for ( int row = k; row < rows; row++ ) { squared += vector[row] * vector[row]; }
+
+            if ( squared < RANK_TOLERANCE ) { continue; }
+
+            for ( int column = k; column < terms; column++ )
+            {
+                double dot = 0.0;
+                for ( int row = k; row < rows; row++ ) { dot += vector[row] * matrix[( row * terms ) + column]; }
+
+                double factor = 2.0 * dot / squared;
+                for ( int row = k; row < rows; row++ ) { matrix[( row * terms ) + column] -= factor * vector[row]; }
+            }
+
+            double dotRhs = 0.0;
+            for ( int row = k; row < rows; row++ ) { dotRhs += vector[row] * rhs[row]; }
+
+            double scale = 2.0 * dotRhs / squared;
+            for ( int row = k; row < rows; row++ ) { rhs[row] -= scale * vector[row]; }
+        }
+
+        return true;
+    }
+
+
+    private static bool TryBackSubstitute( int rows, int terms, ReadOnlySpan<double> matrix, ReadOnlySpan<double> rhs, Span<double> coefficients )
+    {
+        // rank deficiency has to be judged RELATIVE to the matrix scale. An absolute floor never trips: points
+        // sharing one x give a diagonal around 1e-16 of the leading pivot, which is singular but far above any
+        // fixed epsilon.
+        double largest = 0.0;
+        for ( int i = 0; i < terms; i++ ) { largest = Math.Max(largest, Math.Abs(matrix[( i * terms ) + i])); }
+
+        if ( largest <= RANK_TOLERANCE ) { return false; }
+
+        double tolerance = Math.Max(rows, terms) * MACHINE_EPSILON * largest;
+
+        for ( int i = terms - 1; i >= 0; i-- )
+        {
+            double sum = rhs[i];
+            for ( int j = i + 1; j < terms; j++ ) { sum -= matrix[( i * terms ) + j] * coefficients[j]; }
+
+            double diagonal = matrix[( i * terms ) + i];
+            if ( Math.Abs(diagonal) <= tolerance ) { return false; }
+
+            double value = sum / diagonal;
+            if ( !double.IsFinite(value) ) { return false; }
+
+            coefficients[i] = value;
+        }
+
+        return true;
+    }
+
+
+    [Pure] private static double Score( ReadOnlySpan<ReadOnlyPoint> points, sbyte degree, int terms, ReadOnlySpan<double> coefficients )
+    {
+        double total = 0.0;
 
         foreach ( ref readonly ReadOnlyPoint point in points )
         {
-            double predicted = line[point.X];
-            if ( double.IsNaN(predicted) || double.IsInfinity(predicted) ) { return double.PositiveInfinity; }
+            double t = degree < 0
+                           ? 1.0 / point.X
+                           : point.X;
+
+            double predicted = coefficients[terms - 1];
+            for ( int i = terms - 2; i >= 0; i-- ) { predicted = ( predicted * t ) + coefficients[i]; }
+
+            if ( !double.IsFinite(predicted) ) { return double.PositiveInfinity; }
 
             double residual = point.Y - predicted;
-            sum += residual * residual;
+            total += residual * residual;
         }
 
-        return double.IsNaN(sum)
+        return double.IsNaN(total)
                    ? double.PositiveInfinity
-                   : sum;
+                   : total;
     }
 }
