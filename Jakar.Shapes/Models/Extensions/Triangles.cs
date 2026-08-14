@@ -47,7 +47,7 @@ public static class Triangles
         public ReadOnlyLine  Ab()         => new(self.A, self.B);
         public ReadOnlyLine  Bc()         => new(self.B, self.C);
         public ReadOnlyLine  Ca()         => new(self.C, self.A);
-        public double        Area()       => Math.Abs(0.5 * ( self.B.X - self.A.X ) * ( self.C.Y - self.A.Y ) - ( self.C.X - self.A.X ) * ( self.B.Y - self.A.Y ));
+        public double        Area()       => Math.Abs((( self.B.X - self.A.X ) * ( self.C.Y - self.A.Y )) - (( self.C.X - self.A.X ) * ( self.B.Y - self.A.Y ))) / 2.0;
         public ReadOnlyPoint Centroid()   => new(( self.A.X + self.B.X + self.C.X ) / 3, ( self.A.Y + self.B.Y + self.C.Y ) / 3);
         public Degrees       Abc()        => new(self.A.AngleBetween(self.B, self.C));
         public Degrees       Bac()        => new(self.B.AngleBetween(self.A, self.C));
@@ -96,5 +96,101 @@ public static class Triangles
         public TTriangle Subtract( int    value ) => TTriangle.Create(self.A - value, self.B - value, self.C - value);
         public TTriangle Divide( int      value ) => TTriangle.Create(self.A / value, self.B / value, self.C / value);
         public TTriangle Multiply( int    value ) => TTriangle.Create(self.A * value, self.B * value, self.C * value);
+    
+        // ----------------------------------------------------------------------------- measurements
+
+        /// <summary> Edge lengths in order: AB, BC, CA. </summary>
+        public (double AB, double BC, double CA) SideLengths() => (self.A.DistanceTo(self.B), self.B.DistanceTo(self.C), self.C.DistanceTo(self.A));
+
+        public double Perimeter()
+        {
+            (double ab, double bc, double ca) = self.SideLengths();
+            return ab + bc + ca;
+        }
+
+        /// <summary> Interior angles at A, B and C. They sum to 180 degrees. </summary>
+        public (Degrees A, Degrees B, Degrees C) Angles() => (self.Abc(), self.Bac(), self.Cab());
+
+        public ReadOnlyRectangle BoundingBox()
+        {
+            double minX = Math.Min(self.A.X, Math.Min(self.B.X, self.C.X));
+            double minY = Math.Min(self.A.Y, Math.Min(self.B.Y, self.C.Y));
+            double maxX = Math.Max(self.A.X, Math.Max(self.B.X, self.C.X));
+            double maxY = Math.Max(self.A.Y, Math.Max(self.B.Y, self.C.Y));
+            return new ReadOnlyRectangle(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        /// <summary> True when <paramref name="point"/> lies inside or on the boundary, tested by barycentric sign. </summary>
+        public bool Contains( in ReadOnlyPoint point )
+        {
+            double d1 = Sign(point, self.A, self.B);
+            double d2 = Sign(point, self.B, self.C);
+            double d3 = Sign(point, self.C, self.A);
+            bool   negative = d1 < -1e-9 || d2 < -1e-9 || d3 < -1e-9;
+            bool   positive = d1 > 1e-9  || d2 > 1e-9  || d3 > 1e-9;
+            return !( negative && positive );
+        }
+
+        public bool Intersects<TOther>( TOther other )
+            where TOther : struct, ITriangle<TOther> => self.Contains(other.A)  || self.Contains(other.B)  || self.Contains(other.C) ||
+                                                        other.Contains(self.A) || other.Contains(self.B) || other.Contains(self.C);
+
+        /// <summary> The circle through all three vertices. </summary>
+        public Circle CircumscribedCircle()
+        {
+            double ax = self.A.X, ay = self.A.Y, bx = self.B.X, by = self.B.Y, cx = self.C.X, cy = self.C.Y;
+            double d  = 2 * ( ( ax * ( by - cy ) ) + ( bx * ( cy - ay ) ) + ( cx * ( ay - by ) ) );
+            if ( Math.Abs(d) < 1e-12 ) { return Circle.Invalid; }
+
+            double ux = ( ( ( ax * ax ) + ( ay * ay ) ) * ( by - cy ) ) + ( ( ( bx * bx ) + ( by * by ) ) * ( cy - ay ) ) + ( ( ( cx * cx ) + ( cy * cy ) ) * ( ay - by ) );
+            double uy = ( ( ( ax * ax ) + ( ay * ay ) ) * ( cx - bx ) ) + ( ( ( bx * bx ) + ( by * by ) ) * ( ax - cx ) ) + ( ( ( cx * cx ) + ( cy * cy ) ) * ( bx - ax ) );
+            ReadOnlyPoint center = new(ux / d, uy / d);
+            return new Circle(center, center.DistanceTo(self.A));
+        }
+
+        /// <summary> The largest circle fitting inside the triangle. </summary>
+        public Circle InscribedCircle()
+        {
+            (double ab, double bc, double ca) = self.SideLengths();
+            double perimeter = ab + bc + ca;
+            if ( perimeter <= 1e-12 ) { return Circle.Invalid; }
+
+            ReadOnlyPoint center = new(( ( bc * self.A.X ) + ( ca * self.B.X ) + ( ab * self.C.X ) ) / perimeter, ( ( bc * self.A.Y ) + ( ca * self.B.Y ) + ( ab * self.C.Y ) ) / perimeter);
+            return new Circle(center, 2 * self.Area() / perimeter);
+        }
+
+
+        // ----------------------------------------------------------------------------- transforms
+
+        public TTriangle Scale( double factor )
+        {
+            ReadOnlyPoint c = self.Centroid();
+            return TTriangle.Create(ScaleAbout(self.A, c, factor), ScaleAbout(self.B, c, factor), ScaleAbout(self.C, c, factor));
+        }
+
+        public TTriangle Translate( double xOffset, double yOffset ) =>
+            TTriangle.Create(new ReadOnlyPoint(self.A.X + xOffset, self.A.Y + yOffset), new ReadOnlyPoint(self.B.X + xOffset, self.B.Y + yOffset), new ReadOnlyPoint(self.C.X + xOffset, self.C.Y + yOffset));
+
+        public TTriangle Rotate( Radians angle ) => self.Rotate(angle, self.Centroid());
+
+        public TTriangle Rotate( Radians angle, in ReadOnlyPoint origin )
+        {
+            double sin = Math.Sin(angle.Value);
+            double cos = Math.Cos(angle.Value);
+            return TTriangle.Create(RotateAbout(self.A, origin, sin, cos), RotateAbout(self.B, origin, sin, cos), RotateAbout(self.C, origin, sin, cos));
+        }
+}
+
+
+    private static double Sign( in ReadOnlyPoint p, in ReadOnlyPoint a, in ReadOnlyPoint b ) => (( p.X - b.X ) * ( a.Y - b.Y )) - (( a.X - b.X ) * ( p.Y - b.Y ));
+
+    private static ReadOnlyPoint ScaleAbout( in ReadOnlyPoint point, in ReadOnlyPoint origin, double factor ) =>
+        new(origin.X + (( point.X - origin.X ) * factor), origin.Y + (( point.Y - origin.Y ) * factor));
+
+    private static ReadOnlyPoint RotateAbout( in ReadOnlyPoint point, in ReadOnlyPoint origin, double sin, double cos )
+    {
+        double dx = point.X - origin.X;
+        double dy = point.Y - origin.Y;
+        return new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos ));
     }
 }

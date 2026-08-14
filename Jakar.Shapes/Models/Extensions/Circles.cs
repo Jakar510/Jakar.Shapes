@@ -277,5 +277,50 @@ public static class Circles
                 return mid;
             }
         }
-    }
+    
+        // ----------------------------------------------------------------------------- measurements
+
+        public double        Diameter()      => 2 * self.Radius;
+        public double        Area()          => Math.PI * self.Radius * self.Radius;
+        public double        Perimeter()     => 2 * Math.PI * self.Radius;
+        public double        Circumference() => self.Perimeter();
+        public ReadOnlyPoint Centroid()      => self.Center;
+
+        public ReadOnlyRectangle BoundingBox() => new(self.Center.X - self.Radius, self.Center.Y - self.Radius, 2 * self.Radius, 2 * self.Radius);
+
+        /// <summary> True when <paramref name="point"/> lies inside or on the boundary. </summary>
+        public bool Contains( in ReadOnlyPoint point ) => self.Center.DistanceTo(point) <= self.Radius + TOLERANCE;
+
+        public bool Intersects<TOther>( TOther other )
+            where TOther : struct, ICircle<TOther>
+        {
+            double distance = self.Center.DistanceTo(other.Center);
+            return distance <= self.Radius + other.Radius + TOLERANCE && distance >= Math.Abs(self.Radius - other.Radius) - TOLERANCE;
+        }
+
+        /// <summary> True when <paramref name="other"/> lies wholly inside this circle. </summary>
+        public bool Encloses<TOther>( TOther other )
+            where TOther : struct, ICircle<TOther> => self.Center.DistanceTo(other.Center) + other.Radius <= self.Radius + TOLERANCE;
+
+
+        // ----------------------------------------------------------------------------- transforms
+
+        public TCircle Scale( double factor )                      => TCircle.Create(self.Center, self.Radius * factor);
+        public TCircle Grow( double amount )                       => TCircle.Create(self.Center, self.Radius + amount);
+        public TCircle Translate( double xOffset, double yOffset ) => TCircle.Create(new ReadOnlyPoint(self.Center.X + xOffset, self.Center.Y + yOffset), self.Radius);
+        public TCircle MoveTo( in ReadOnlyPoint center )           => TCircle.Create(center, self.Radius);
+
+        /// <summary> Rotating a circle about its own centre is the identity; provided so every shape carries the same surface. </summary>
+        public TCircle Rotate( Radians angle ) => TCircle.Create(self.Center, self.Radius);
+
+        /// <summary> Rotates the centre about an arbitrary origin. </summary>
+        public TCircle Rotate( Radians angle, in ReadOnlyPoint origin )
+        {
+            double sin = Math.Sin(angle.Value);
+            double cos = Math.Cos(angle.Value);
+            double dx  = self.Center.X - origin.X;
+            double dy  = self.Center.Y - origin.Y;
+            return TCircle.Create(new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos )), self.Radius);
+        }
+}
 }

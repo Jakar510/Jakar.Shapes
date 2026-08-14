@@ -223,5 +223,49 @@ public static class Rectangles
         public TRectangle Subtract( int    other ) => TRectangle.Create(self.X, self.Y, self.Width - other, self.Height - other);
         public TRectangle Divide( int      other ) => TRectangle.Create(self.X, self.Y, self.Width / other, self.Height / other);
         public TRectangle Multiply( int    other ) => TRectangle.Create(self.X, self.Y, self.Width * other, self.Height * other);
-    }
+    
+        // ----------------------------------------------------------------------------- measurements
+
+        public double Area()      => self.Width * self.Height;
+        public double Perimeter() => 2 * ( self.Width + self.Height );
+
+        public ReadOnlyPoint Centroid() => self.Center();
+
+        public ReadOnlyRectangle BoundingBox() => new(self.X, self.Y, self.Width, self.Height);
+
+        /// <summary> Edge lengths in order: top, right, bottom, left. </summary>
+        public (double Top, double Right, double Bottom, double Left) SideLengths() => (self.Width, self.Height, self.Width, self.Height);
+
+        /// <summary> Both diagonals have the same length for a rectangle. </summary>
+        public double DiagonalLength() => Math.Sqrt(( self.Width * self.Width ) + ( self.Height * self.Height ));
+
+        public (double First, double Second) DiagonalLengths()
+        {
+            double d = self.DiagonalLength();
+            return (d, d);
+        }
+
+        /// <summary> Every interior angle of a rectangle is a right angle. </summary>
+        public (Degrees TopLeft, Degrees TopRight, Degrees BottomRight, Degrees BottomLeft) Angles() => (new Degrees(90), new Degrees(90), new Degrees(90), new Degrees(90));
+
+        public bool Intersects<TOther>( TOther other )
+            where TOther : struct, IRectangle<TOther> => self.X < other.X + other.Width && other.X < self.X + self.Width && self.Y < other.Y + other.Height && other.Y < self.Y + self.Height;
+
+
+        // ----------------------------------------------------------------------------- transforms
+
+        /// <summary> Scales about the centre, so the centre is preserved. </summary>
+        public TRectangle Scale( double factor )
+        {
+            ReadOnlyPoint c = self.Center();
+            double        w = self.Width  * factor;
+            double        h = self.Height * factor;
+            return TRectangle.Create(c.X - ( w / 2 ), c.Y - ( h / 2 ), w, h);
+        }
+
+        /// <summary> Expands every edge outward by <paramref name="amount"/>, keeping the centre. </summary>
+        public TRectangle Grow( double amount ) => TRectangle.Create(self.X - amount, self.Y - amount, self.Width + ( 2 * amount ), self.Height + ( 2 * amount ));
+
+        public TRectangle Translate( double xOffset, double yOffset ) => TRectangle.Create(self.X + xOffset, self.Y + yOffset, self.Width, self.Height);
+}
 }
