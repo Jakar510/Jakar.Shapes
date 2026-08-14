@@ -17,10 +17,13 @@ namespace Jakar.Shapes;
 [method: JsonConstructor]
 public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline>
 {
-    public static readonly  Spline          Invalid = new(null);
-    public static readonly  Spline          Zero    = new(ReadOnlyPoint.Zero);
-    public static readonly  Spline          One     = new(ReadOnlyPoint.One);
+    // __empty must be declared first: static initialisers run in declaration order, and the three
+    // sentinels below consume it. Declared after, it is still null when they are built, so their
+    // Points field ends up null and every member that reads Points.Length throws.
     private static readonly ReadOnlyPoint[] __empty = [];
+    public static readonly  Spline         Invalid = new(null);
+    public static readonly  Spline         Zero    = new(ReadOnlyPoint.Zero);
+    public static readonly  Spline         One     = new(ReadOnlyPoint.One);
     public readonly         ReadOnlyPoint[] Points  = points ?? __empty;
 
 
@@ -31,9 +34,9 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
     static ref readonly Spline IShape<Spline>.                 One     => ref One;
     static ref readonly Spline IShape<Spline>.                 Invalid => ref Invalid;
     [JsonIgnore] public ReadOnlySpan<ReadOnlyPoint>            Span    => Points;
-    public              int                                    Length  => Points.Length;
+    public              int                                    Length  => Points?.Length ?? 0;
     ReadOnlySpan<ReadOnlyPoint> ISpline<Spline, ReadOnlyPoint>.Points  => Points;
-    public bool                                                IsEmpty => Points.Length is 0 or 1;
+    public bool                                                IsEmpty => Points is not { Length: > 1 };
     public bool IsNaN
     {
         get
@@ -120,7 +123,7 @@ public readonly struct Spline( params ReadOnlyPoint[]? points ) : ISpline<Spline
         return true;
     }
     public override bool   Equals( object? other ) => other is Spline x && Equals(x);
-    public override int    GetHashCode()           => Points.GetHashCode();
+    public override int    GetHashCode()           => Points?.GetHashCode() ?? 0;
     public override string ToString()              => ToString(null, null);
     public string ToString( string? format, IFormatProvider? formatProvider )
     {
