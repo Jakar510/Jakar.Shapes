@@ -1,5 +1,5 @@
 <Solution>
   <Project Path="Jakar.Shapes.Experiments/Jakar.Shapes.Experiments.csproj" />
   <Project Path="Jakar.Shapes.Tests/Jakar.Shapes.Tests.csproj" />
-  <Project Path="Jakar.Shapes/Jakar.Shapes.csproj" />
+  <Project Path="Jakar.Shapes/Jakar.Shapes.csproj" Id="adcc400b-72dc-4537-b62c-05da547f81c6" />
 </Solution>

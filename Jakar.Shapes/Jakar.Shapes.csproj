@@ -1,74 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<Nullable>enable</Nullable>
-		<NoWarn>$(NoWarn);1591;IDE0079;CS8424;IDE0046;CS1658;CS1591</NoWarn>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>10.0.2</Version>
-		<Title>Jakar.Shapes</Title>
-		<PackageId>Jakar.Shapes</PackageId>
-		<Authors>Tyler Stegmaier</Authors>
-		<Company></Company>
-		<PackageReleaseNotes>Bug Fixes</PackageReleaseNotes>
-		<Description>Extensions to aid in development.</Description>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<RepositoryType>git</RepositoryType>
-		<RepositoryUrl>https://github.com/Jakar510/Jakar.Shapes</RepositoryUrl>
-		<PackageProjectUrl>https://github.com/Jakar510/Jakar.Shapes</PackageProjectUrl>
-		<Copyright>https://raw.githubusercontent.com/Jakar510/Jakar.Shapes/master/LICENSE.txt</Copyright>
-		<PackageTags>Geometry Drawing Jakar Extensions Point Line Circle Rectangle Triangle</PackageTags>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<OpenApiGenerateDocuments>False</OpenApiGenerateDocuments>
-		<AccelerateBuildsInVisualStudio>True</AccelerateBuildsInVisualStudio>
-		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
-		<EnableNETAnalyzers>True</EnableNETAnalyzers>
-		<NeutralLanguage>en</NeutralLanguage>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<StripSymbols>False</StripSymbols>
-		<IncludeSymbols>True</IncludeSymbols>
-		<IsAotCompatible>True</IsAotCompatible>
-		<OptimizationPreference>Speed</OptimizationPreference>
-		<EventSourceSupport>True</EventSourceSupport>
-		<PackageIcon>icon.png</PackageIcon>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="..\icon.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-		<None Include="..\LICENSE.txt">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-		<None Include="..\README.md">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-		<None Include="README.md">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-	</ItemGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<DocumentationFile>bin\Release\Jakar.Shapes.xml</DocumentationFile>
-		<DefineConstants>DEBUG;TRACE</DefineConstants>
-		<Optimize>True</Optimize>
-		<IsAotCompatible>True</IsAotCompatible>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-		<DefineConstants>DEBUG;TRACE</DefineConstants>
-		<IsAotCompatible>True</IsAotCompatible>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Jakar.Extensions" />
-	</ItemGroup>
 </Project>
