@@ -16,17 +16,17 @@ public sealed class LineOfBestFit_Tests : Assert
     // helpers
     // ---------------------------------------------------------------------------------------------------------
 
-    private static Spline Of( params (double X, double Y)[] points )
+    private static Spline Of( params ReadOnlySpan<(double X, double Y)> points )
     {
-        ReadOnlyPoint[] array = new ReadOnlyPoint[points.Length];
-        for ( int i = 0; i < points.Length; i++ ) { array[i] = new ReadOnlyPoint(points[i].X, points[i].Y); }
+        Span<ReadOnlyPoint> buffer = stackalloc ReadOnlyPoint[points.Length];
+        for ( int i = 0; i < points.Length; i++ ) { buffer[i] = new ReadOnlyPoint(points[i].X, points[i].Y); }
 
-        return new Spline(array);
+        return new Spline(buffer);
     }
 
 
     /// <summary> Evaluates <c> a_0 + a_1*t + a_2*t^2 + ... </c> where <c> t </c> is <c> x </c>, or <c> 1/x </c> for a Laurent fit. </summary>
-    private static double Evaluate( double[] ascending, sbyte degree, double x )
+    private static double Evaluate( ReadOnlySpan<double> ascending, sbyte degree, double x )
     {
         double t = degree < 0
                        ? 1.0 / x
@@ -40,12 +40,12 @@ public sealed class LineOfBestFit_Tests : Assert
 
 
     /// <summary> Samples the polynomial exactly at each x, so the fit has a zero-error solution to find. </summary>
-    private static Spline Curve( double[] ascending, sbyte degree, params double[] xValues )
+    private static Spline Curve( ReadOnlySpan<double> ascending, sbyte degree, params ReadOnlySpan<double> xValues )
     {
-        ReadOnlyPoint[] array = new ReadOnlyPoint[xValues.Length];
-        for ( int i = 0; i < xValues.Length; i++ ) { array[i] = new ReadOnlyPoint(xValues[i], Evaluate(ascending, degree, xValues[i])); }
+        Span<ReadOnlyPoint> buffer = stackalloc ReadOnlyPoint[xValues.Length];
+        for ( int i = 0; i < xValues.Length; i++ ) { buffer[i] = new ReadOnlyPoint(xValues[i], Evaluate(ascending, degree, xValues[i])); }
 
-        return new Spline(array);
+        return new Spline(buffer);
     }
 
 
@@ -60,7 +60,7 @@ public sealed class LineOfBestFit_Tests : Assert
     }
 
 
-    private static void HasCoefficients( PolynomialFit fit, params double[] ascending )
+    private static void HasCoefficients( PolynomialFit fit, params ReadOnlySpan<double> ascending )
     {
         Assert.That(fit.IsValid,           Is.True);
         Assert.That(fit.Coefficients.Length, Is.EqualTo(ascending.Length));
@@ -116,10 +116,10 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase((sbyte)6)]
     public void EveryDegree_WithAllTermsPresent_IsRecovered( sbyte degree )
     {
-        double[] ascending = new double[degree + 1];
+        Span<double> ascending = stackalloc double[degree + 1];
         for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }   // every term non-zero
 
-        double[] xs = new double[degree + 4];
+        Span<double> xs = stackalloc double[degree + 4];
         for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
 
         Spline        spline = Curve(ascending, degree, xs);
@@ -155,10 +155,10 @@ public sealed class LineOfBestFit_Tests : Assert
     public void EveryNegativeDegree_IsRecovered( sbyte degree )
     {
         int      terms     = Math.Abs(degree) + 1;
-        double[] ascending = new double[terms];
+        Span<double> ascending = stackalloc double[terms];
         for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
 
-        double[] xs = new double[terms + 3];
+        Span<double> xs = stackalloc double[terms + 3];
         for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
 
         Spline        spline = Curve(ascending, degree, xs);
@@ -217,10 +217,10 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase((sbyte)6)]
     public void AutoSearch_RecoversGeneratingDegree( sbyte degree )
     {
-        double[] ascending = new double[degree + 1];
+        Span<double> ascending = stackalloc double[degree + 1];
         for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
 
-        double[] xs = new double[degree + 5];
+        Span<double> xs = stackalloc double[degree + 5];
         for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
 
         Spline        spline = Curve(ascending, degree, xs);
@@ -237,10 +237,10 @@ public sealed class LineOfBestFit_Tests : Assert
     public void AutoSearch_RecoversNegativeGeneratingDegree( sbyte degree )
     {
         int      terms     = Math.Abs(degree) + 1;
-        double[] ascending = new double[terms];
+        Span<double> ascending = stackalloc double[terms];
         for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
 
-        double[] xs = new double[terms + 4];
+        Span<double> xs = stackalloc double[terms + 4];
         for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
 
         Spline spline = Curve(ascending, degree, xs);
@@ -473,14 +473,11 @@ public sealed class LineOfBestFit_Tests : Assert
     [TestCase(10.8584, 1.9, 4.2, 4.9)]
     [TestCase(12.0232, 1.0, 3.7, 5.0)]
     [TestCase(6.1212,  0.7, 1.4, 2.3)]
-    public void AutoSearch_ConstantData_WhoseMeanRounds_StaysFiniteAtOrigin( double value, params double[] xValues )
+    public void AutoSearch_ConstantData_WhoseMeanRounds_StaysFiniteAtOrigin( double value, double x1, double x2, double x3 )
     {
         // the mean of these identical values rounds by one ulp, so a richer model can score marginally
         // lower on pure noise; without the noise floor the chosen model returns NaN or -Infinity at x = 0
-        ReadOnlyPoint[] array = new ReadOnlyPoint[xValues.Length];
-        for ( int i = 0; i < xValues.Length; i++ ) { array[i] = new ReadOnlyPoint(xValues[i], value); }
-
-        Spline        spline = new(array);
+        Spline        spline = new(new ReadOnlyPoint(x1, value), new ReadOnlyPoint(x2, value), new ReadOnlyPoint(x3, value));
         PolynomialFit fit    = LineOfBestFit.Fit(in spline);
 
         AreClose(value, fit[0]);

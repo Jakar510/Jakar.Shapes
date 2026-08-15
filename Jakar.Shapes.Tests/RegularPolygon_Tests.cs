@@ -32,13 +32,42 @@ public sealed class RegularPolygon_Tests : Assert
 
     [Test] public void VertexCount_MatchesSideCount()
     {
-        Assert.That(new Pentagon(P(0, 0), 2).Vertices().Length, Is.EqualTo(5));
-        Assert.That(new Hexagon(P(0, 0),  2).Vertices().Length, Is.EqualTo(6));
-        Assert.That(new Heptagon(P(0, 0), 2).Vertices().Length, Is.EqualTo(7));
-        Assert.That(new Octagon(P(0, 0),  2).Vertices().Length, Is.EqualTo(8));
-        Assert.That(new Nonagon(P(0, 0),  2).Vertices().Length, Is.EqualTo(9));
-        Assert.That(new Decagon(P(0, 0),  2).Vertices().Length, Is.EqualTo(10));
-        Assert.That(new Octagon(P(0, 0),  2).Edges().Length,    Is.EqualTo(8));
+        Span<ReadOnlyPoint> points = stackalloc ReadOnlyPoint[RegularPolygons.MAX_SIDES];
+        Assert.That(new Pentagon(P(0, 0), 2).Vertices(points).Length, Is.EqualTo(5));
+        Assert.That(new Hexagon(P(0, 0),  2).Vertices(points).Length, Is.EqualTo(6));
+        Assert.That(new Heptagon(P(0, 0), 2).Vertices(points).Length, Is.EqualTo(7));
+        Assert.That(new Octagon(P(0, 0),  2).Vertices(points).Length, Is.EqualTo(8));
+        Assert.That(new Nonagon(P(0, 0),  2).Vertices(points).Length, Is.EqualTo(9));
+        Assert.That(new Decagon(P(0, 0),  2).Vertices(points).Length, Is.EqualTo(10));
+
+        Span<ReadOnlyLine> edges = stackalloc ReadOnlyLine[RegularPolygons.MAX_SIDES];
+        Assert.That(new Octagon(P(0, 0), 2).Edges(edges).Length, Is.EqualTo(8));
+    }
+
+
+    [Test] public void VertexCountProperty_MatchesTheBufferItNeeds()
+    {
+        Assert.That(new Pentagon(P(0, 0), 2).VertexCount,   Is.EqualTo(5));
+        Assert.That(new Decagon(P(0, 0),  2).VertexCount,   Is.EqualTo(10));
+        Assert.That(new Pentagon(P(0, 0), 2).DiagonalCount, Is.EqualTo(2));    // n - 3
+        Assert.That(new Decagon(P(0, 0),  2).DiagonalCount, Is.EqualTo(7));
+    }
+
+
+    [Test] public void Vertices_RejectsAnUndersizedDestination()
+    {
+        // written with an explicit try/catch rather than Assert.That(lambda, Throws...):
+        // a stackalloc'd Span cannot be carried into a lambda that is converted to a delegate
+        bool threw = false;
+
+        try
+        {
+            Span<ReadOnlyPoint> tooSmall = stackalloc ReadOnlyPoint[3];
+            new Decagon(P(0, 0), 2).Vertices(tooSmall);
+        }
+        catch ( ArgumentException ) { threw = true; }
+
+        Assert.That(threw, Is.True, "a destination smaller than SideCount must be rejected");
     }
 
 
@@ -112,15 +141,16 @@ public sealed class RegularPolygon_Tests : Assert
 
     [Test] public void ClosedFormArea_MatchesShoelaceOverTheVertices()
     {
-        Shoelace(new Pentagon(P(0, 0), 2).Vertices(), new Pentagon(P(0, 0), 2).Area());
-        Shoelace(new Hexagon(P(1, 2),  3).Vertices(), new Hexagon(P(1, 2),  3).Area());
-        Shoelace(new Heptagon(P(0, 0), 2).Vertices(), new Heptagon(P(0, 0), 2).Area());
-        Shoelace(new Octagon(P(-4, 5), 1.5).Vertices(), new Octagon(P(-4, 5), 1.5).Area());
-        Shoelace(new Nonagon(P(0, 0), 2).Vertices(), new Nonagon(P(0, 0), 2).Area());
-        Shoelace(new Decagon(P(2, -3), 4).Vertices(), new Decagon(P(2, -3), 4).Area());
+        Span<ReadOnlyPoint> buffer = stackalloc ReadOnlyPoint[RegularPolygons.MAX_SIDES];
+        Shoelace(new Pentagon(P(0, 0),   2).Vertices(buffer),   new Pentagon(P(0, 0),   2).Area());
+        Shoelace(new Hexagon(P(1, 2),    3).Vertices(buffer),   new Hexagon(P(1, 2),    3).Area());
+        Shoelace(new Heptagon(P(0, 0),   2).Vertices(buffer),   new Heptagon(P(0, 0),   2).Area());
+        Shoelace(new Octagon(P(-4, 5), 1.5).Vertices(buffer),   new Octagon(P(-4, 5), 1.5).Area());
+        Shoelace(new Nonagon(P(0, 0),    2).Vertices(buffer),   new Nonagon(P(0, 0),    2).Area());
+        Shoelace(new Decagon(P(2, -3),   4).Vertices(buffer),   new Decagon(P(2, -3),   4).Area());
         return;
 
-        static void Shoelace( ReadOnlyPoint[] points, double expected )
+        static void Shoelace( ReadOnlySpan<ReadOnlyPoint> points, double expected )
         {
             double sum = 0;
             for ( int i = 0; i < points.Length; i++ )
@@ -137,16 +167,25 @@ public sealed class RegularPolygon_Tests : Assert
 
     [Test] public void EveryVertex_LiesOnTheCircumscribedCircle()
     {
-        Pentagon shape = new(P(3, -2), 5);
-        foreach ( ReadOnlyPoint vertex in shape.Vertices() ) { AreClose(5, shape.Center.DistanceTo(vertex)); }
+        Pentagon            shape  = new(P(3, -2), 5);
+        Span<ReadOnlyPoint> buffer = stackalloc ReadOnlyPoint[shape.VertexCount];
+
+        foreach ( ref readonly ReadOnlyPoint vertex in shape.Vertices(buffer) ) { AreClose(5, shape.Center.DistanceTo(vertex)); }
     }
 
 
     [Test] public void EverySide_HasTheSameLength()
     {
-        Nonagon         shape  = new(P(0, 0), 3);
-        ReadOnlyPoint[] points = shape.Vertices();
+        Nonagon                     shape  = new(P(0, 0), 3);
+        Span<ReadOnlyPoint>         buffer = stackalloc ReadOnlyPoint[shape.VertexCount];
+        ReadOnlySpan<ReadOnlyPoint> points = shape.Vertices(buffer);
+
         for ( int i = 0; i < points.Length; i++ ) { AreClose(shape.SideLength(), points[i].DistanceTo(points[( i + 1 ) % points.Length])); }
+
+        Span<double>         lengths = stackalloc double[shape.VertexCount];
+        ReadOnlySpan<double> sides   = shape.SideLengths(lengths);
+        Assert.That(sides.Length, Is.EqualTo(9));
+        foreach ( double length in sides ) { AreClose(shape.SideLength(), length); }
     }
 
 
@@ -229,10 +268,11 @@ public sealed class RegularPolygon_Tests : Assert
 
     [Test] public void BoundingBox_ContainsEveryVertex()
     {
-        Octagon           shape = new(P(2, -1), 3);
-        ReadOnlyRectangle box   = shape.BoundingBox();
+        Octagon             shape  = new(P(2, -1), 3);
+        ReadOnlyRectangle   box    = shape.BoundingBox();
+        Span<ReadOnlyPoint> buffer = stackalloc ReadOnlyPoint[shape.VertexCount];
 
-        foreach ( ReadOnlyPoint vertex in shape.Vertices() )
+        foreach ( ref readonly ReadOnlyPoint vertex in shape.Vertices(buffer) )
         {
             Assert.That(vertex.X, Is.InRange(box.X - TOLERANCE,             box.X + box.Width  + TOLERANCE));
             Assert.That(vertex.Y, Is.InRange(box.Y - TOLERANCE,             box.Y + box.Height + TOLERANCE));

@@ -59,20 +59,33 @@ public static class LineOfBestFit
     private const int STACK_LIMIT = 128;
 
 
-    /// <summary> Fits the best equation and returns it as an evaluable line. See <see cref="Fit"/> for the coefficients. </summary>
-    [Pure] public static CalculatedLine Calculate( ref readonly Spline line, sbyte? primaryPower = null ) => Fit(in line, primaryPower).ToCalculatedLine();
+    /// <summary> Fits the best equation and returns it as an evaluable line. See <see cref="Fit(ReadOnlySpan{ReadOnlyPoint}, sbyte?)"/> for the coefficients. </summary>
+    [Pure] public static CalculatedLine Calculate( ref readonly Spline line, sbyte? primaryPower = null ) => Fit(line.Span, primaryPower).ToCalculatedLine();
+
+    /// <summary> Fits the points directly, with no <see cref="Spline"/> in between. </summary>
+    [Pure] public static CalculatedLine Calculate( ReadOnlySpan<ReadOnlyPoint> points, sbyte? primaryPower = null ) => Fit(points, primaryPower).ToCalculatedLine();
+
+
+    /// <inheritdoc cref="Fit(ReadOnlySpan{ReadOnlyPoint}, sbyte?)"/>
+    [Pure] public static PolynomialFit Fit( ref readonly Spline line, sbyte? primaryPower = null ) => Fit(line.Span, primaryPower);
 
 
     /// <summary>
     /// Fits the best equation and returns its coefficients, degree and residual error.
+    /// <para>
+    /// This overload takes the points directly, so a stackalloc buffer can be fitted without materialising a
+    /// <see cref="Spline"/>. Nothing is allocated beyond the returned coefficients:
+    /// <code>
+    /// Span&lt;ReadOnlyPoint&gt; points = stackalloc ReadOnlyPoint[count];
+    /// PolynomialFit fit = LineOfBestFit.Fit(points);
+    /// </code>
+    /// </para>
     /// </summary>
-    /// <param name="line"> Points to fit. </param>
+    /// <param name="points"> Points to fit. Fewer than two cannot determine a line. </param>
     /// <param name="primaryPower"> Degree to fit, or <see langword="null"/> to choose one automatically. </param>
-    [Pure] public static PolynomialFit Fit( ref readonly Spline line, sbyte? primaryPower = null )
+    [Pure] public static PolynomialFit Fit( ReadOnlySpan<ReadOnlyPoint> points, sbyte? primaryPower = null )
     {
-        if ( line.IsEmpty ) { return PolynomialFit.Invalid; }
-
-        ReadOnlySpan<ReadOnlyPoint> points = line.Span;
+        if ( points.Length is 0 or 1 ) { return PolynomialFit.Invalid; }
 
         return primaryPower is { } degree
                    ? FitDegree(points, degree)
@@ -87,7 +100,7 @@ public static class LineOfBestFit
         Span<double> coefficients = stackalloc double[MAX_TERMS];
 
         return TrySolve(points, degree, coefficients, out int terms, out double error)
-                   ? new PolynomialFit(coefficients[..terms].ToArray(), degree, error)
+                   ? new PolynomialFit(coefficients[..terms], degree, error)
                    : PolynomialFit.Invalid;
     }
 
@@ -177,10 +190,7 @@ public static class LineOfBestFit
 
     [Pure]
     private static PolynomialFit Build( ReadOnlySpan<double> allCoefficients, ReadOnlySpan<int> termCounts, ReadOnlySpan<sbyte> degrees, ReadOnlySpan<double> errors, int index ) =>
-        new(allCoefficients.Slice(index * MAX_TERMS, termCounts[index])
-                           .ToArray(),
-            degrees[index],
-            errors[index]);
+        new(allCoefficients.Slice(index * MAX_TERMS, termCounts[index]), degrees[index], errors[index]);
 
 
     /// <summary> The squared-error level below which two candidates are indistinguishable given <see cref="double"/> precision. </summary>

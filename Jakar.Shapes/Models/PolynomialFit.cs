@@ -17,7 +17,8 @@ namespace Jakar.Shapes;
 public readonly struct PolynomialFit
 {
     public static readonly PolynomialFit Invalid = new();
-    private readonly       double[]?     __coefficients;
+    /// <summary> Backing store. A struct cannot hold a <see cref="Span{T}"/> field, so the values are owned as an array and exposed as a span. </summary>
+    private readonly double[]? __coefficients;
 
     /// <summary> Highest power in the fitted equation. Negative values denote a Laurent fit in <c> x^-k </c>. </summary>
     public readonly sbyte Degree;
@@ -28,17 +29,21 @@ public readonly struct PolynomialFit
 
     /// <summary> Ascending coefficients: index <c> k </c> multiplies <c> x^k </c>, or <c> x^-k </c> when <see cref="Degree"/> is negative. </summary>
     public ReadOnlySpan<double> Coefficients => __coefficients;
-
-    public bool IsValid => __coefficients is { Length: > 0 };
+    public bool                 IsValid      => __coefficients is { Length: > 0 };
 
     /// <summary> Number of terms in the equation, always <c> |Degree| + 1 </c>. </summary>
     public int Length => __coefficients?.Length ?? 0;
 
 
-    public PolynomialFit() : this(null, 0, double.PositiveInfinity) { }
-    internal PolynomialFit( double[]? coefficients, sbyte degree, double sumOfSquaredError )
+    public PolynomialFit() : this(ReadOnlySpan<double>.Empty, 0, double.PositiveInfinity) { }
+
+    /// <summary> Copies <paramref name="coefficients"/> into the fit. A struct cannot hold a span, so the values are owned here. </summary>
+    internal PolynomialFit( ReadOnlySpan<double> coefficients, sbyte degree, double sumOfSquaredError )
     {
-        __coefficients    = coefficients;
+        __coefficients = coefficients.IsEmpty
+                             ? null
+                             : [.. coefficients];
+
         Degree            = degree;
         SumOfSquaredError = sumOfSquaredError;
     }
@@ -47,17 +52,18 @@ public readonly struct PolynomialFit
     /// <summary> Evaluates the fitted equation at <paramref name="x"/> via Horner's method. </summary>
     public double this[ double x ]
     {
-        [Pure] get
+        [Pure]
+        get
         {
-            double[]? coefficients = __coefficients;
-            if ( coefficients is null || coefficients.Length is 0 ) { return double.NaN; }
+            ReadOnlySpan<double> coefficients = __coefficients;
+            if ( coefficients.IsEmpty ) { return double.NaN; }
 
             double t = Degree < 0
                            ? 1.0 / x
                            : x;
 
             double result = coefficients[^1];
-            for ( int i = coefficients.Length - 2; i >= 0; i-- ) { result = result * t + coefficients[i]; }
+            for ( int i = coefficients.Length - 2; i >= 0; i-- ) { result = ( result * t ) + coefficients[i]; }
 
             return result;
         }
@@ -77,8 +83,8 @@ public readonly struct PolynomialFit
     /// <summary> Renders the equation in descending order, e.g. <c> 2x^3 - 5x^2 + 3x + 7 </c>. </summary>
     public override string ToString()
     {
-        double[]? coefficients = __coefficients;
-        if ( coefficients is null || coefficients.Length is 0 ) { return $"{nameof(PolynomialFit)}<{nameof(Invalid)}>"; }
+        ReadOnlySpan<double> coefficients = __coefficients;
+        if ( coefficients.IsEmpty ) { return $"{nameof(PolynomialFit)}<{nameof(Invalid)}>"; }
 
         StringBuilder sb      = new();
         bool          negated = Degree < 0;
@@ -88,12 +94,7 @@ public readonly struct PolynomialFit
             double value = coefficients[k];
             if ( value is 0 ) { continue; }
 
-            if ( sb.Length > 0 )
-            {
-                sb.Append(value < 0
-                              ? " - "
-                              : " + ");
-            }
+            if ( sb.Length > 0 ) { sb.Append(value < 0 ? " - " : " + "); }
             else if ( value < 0 ) { sb.Append('-'); }
 
             double magnitude = Math.Abs(value);

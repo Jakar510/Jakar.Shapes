@@ -322,5 +322,61 @@ public static class Circles
             double dy  = self.Center.Y - origin.Y;
             return TCircle.Create(new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos )), self.Radius);
         }
+
+        // ----------------------------------------------------------------------------- perimeter sampling
+
+        /// <summary> The point on the circumference at <paramref name="angle"/>, measured counter-clockwise from the +X axis. </summary>
+        [Pure] public ReadOnlyPoint PointAt( Radians angle ) => new(self.Center.X + ( self.Radius * Math.Cos(angle.Value) ), self.Center.Y + ( self.Radius * Math.Sin(angle.Value) ));
+
+        /// <summary>
+        /// Writes <paramref name="resolution"/> evenly spaced points around the circumference into
+        /// <paramref name="destination"/> and returns the filled slice.
+        /// <para>
+        /// <paramref name="resolution"/> is the number of divisions of a full turn, so a resolution of <c> n </c> steps by
+        /// <c> 2*pi / n </c> and writes exactly <c> n </c> points. The loop is NOT closed -- the last point is one step
+        /// short of the first, so the caller can wrap with <c> (i + 1) % resolution </c>.
+        /// </para>
+        /// <para>
+        /// The caller owns the buffer, so nothing is allocated:
+        /// <code>
+        /// Span&lt;ReadOnlyPoint&gt; buffer = stackalloc ReadOnlyPoint[resolution];
+        /// foreach ( ref readonly ReadOnlyPoint point in circle.PerimeterPoints(buffer, resolution) ) { }
+        /// </code>
+        /// </para>
+        /// <para>
+        /// These are exactly the vertices of a regular <c> n </c>-gon inscribed in the circle, so the sampled polygon
+        /// under-estimates the true area and perimeter, converging as <paramref name="resolution"/> rises.
+        /// </para>
+        /// </summary>
+        /// <param name="destination"> Buffer to fill. Must hold at least <paramref name="resolution"/> entries. </param>
+        /// <param name="resolution"> Number of divisions of 2*pi. Must be at least one. </param>
+        /// <param name="rotation"> Angle of the first point. Zero places it on the +X axis. </param>
+        /// <exception cref="ArgumentOutOfRangeException"> <paramref name="resolution"/> is less than one. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="destination"/> holds fewer than <paramref name="resolution"/> entries. </exception>
+        public ReadOnlySpan<ReadOnlyPoint> PerimeterPoints( Span<ReadOnlyPoint> destination, int resolution, Radians rotation = default )
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(resolution, 1);
+            if ( destination.Length < resolution ) { throw new ArgumentException($"Need at least {resolution} entries, got {destination.Length}.", nameof(destination)); }
+
+            double step = 2 * Math.PI / resolution;
+
+            for ( int i = 0; i < resolution; i++ )
+            {
+                double angle = rotation.Value + ( i * step );
+                destination[i] = new ReadOnlyPoint(self.Center.X + ( self.Radius * Math.Cos(angle) ), self.Center.Y + ( self.Radius * Math.Sin(angle) ));
+            }
+
+            return destination[..resolution];
+        }
+
+        /// <summary> The sampled perimeter as a <see cref="Polygon"/>. Allocates, because Polygon owns its points; prefer <see cref="PerimeterPoints"/> for transient work. </summary>
+        [Pure] public Polygon ToPolygon( int resolution, Radians rotation = default )
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(resolution, 1);
+
+            ReadOnlyPoint[] buffer = GC.AllocateUninitializedArray<ReadOnlyPoint>(resolution);
+            self.PerimeterPoints(buffer, resolution, rotation);
+            return new Polygon(buffer);
+        }
 }
 }

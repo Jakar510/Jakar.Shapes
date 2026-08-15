@@ -15,6 +15,9 @@ namespace Jakar.Shapes;
 
 [DefaultValue(nameof(Invalid))]
 [method: JsonConstructor]
+// The array parameter is required: this is the JsonConstructor, and System.Text.Json binds constructor
+// arguments by reflection, which cannot pass a ref struct. Polygon also has to own an array, since a struct
+// cannot hold a Span field. Prefer the ReadOnlySpan constructor and Create overload from calling code.
 public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polygon>
 {
     // __empty must be declared first: static initialisers run in declaration order, and the three
@@ -48,8 +51,24 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
     public bool IsValid => !IsEmpty && !IsNaN;
 
 
+    /// <summary>
+    /// Copies <paramref name="points"/> into a new polygon, so callers can pass a stackalloc buffer.
+    /// <para>
+    /// The copy is unavoidable: a polygon owns its points for its whole lifetime, and a struct cannot hold a
+    /// <see cref="Span{T}"/> field. Pooling the backing store is not an option either -- <c>ArrayPool.Rent</c> hands
+    /// back an oversized array, which would corrupt <see cref="Length"/> and equality, and a struct has no
+    /// deterministic point at which to return it. For transient work, prefer an API that takes the span directly,
+    /// such as <c>LineOfBestFit.Fit(ReadOnlySpan&lt;ReadOnlyPoint&gt;)</c>, which allocates nothing.
+    /// </para>
+    /// </summary>
+    public Polygon( params ReadOnlySpan<ReadOnlyPoint> points ) : this(points.IsEmpty
+                                                                       ? __empty
+                                                                       : [.. points]) { }
     public static implicit operator Polygon( ReadOnlyPoint[]?               points ) => Create(points);
     [Pure] public static            Polygon Create( params ReadOnlyPoint[]? points ) => new(points);
+
+    /// <summary> Copies <paramref name="points"/>, so callers can pass a stackalloc buffer. </summary>
+    [Pure] public static Polygon Create( params ReadOnlySpan<ReadOnlyPoint> points ) => new(points);
     [Pure] public Polygon Round() => new(AsValueEnumerable()
                                         .Select(static x => x.Round())
                                         .ToArray());
