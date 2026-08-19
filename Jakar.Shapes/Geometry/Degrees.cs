@@ -36,8 +36,8 @@ public readonly record struct Degrees( double Value ) : IFormattable, IMathOpera
     }
 
 
-    public override string ToString()                                                  => $"{Value} rad";
-    public          string ToString( string? format, IFormatProvider? formatProvider ) => $"{Value.ToString(format, formatProvider)} rad";
+    public override string ToString()                                                  => $"{Value}°";
+    public          string ToString( string? format, IFormatProvider? formatProvider ) => $"{Value.ToString(format, formatProvider)}°";
 
 
     public static Degrees operator +( Degrees a, double scalar ) => Normalize(a.Value + scalar);

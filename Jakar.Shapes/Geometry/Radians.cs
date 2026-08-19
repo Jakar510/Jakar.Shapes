@@ -39,8 +39,8 @@ public readonly record struct Radians( double Value ) : IFormattable, IMathOpera
     }
 
 
-    public override string ToString()                                                         => $"{Value:0.####}°";
-    public          string ToString( string?     format, IFormatProvider? formatProvider )    => $"{Value.ToString(format, formatProvider)}°";
+    public override string ToString()                                                         => $"{Value:0.####} rad";
+    public          string ToString( string?     format, IFormatProvider? formatProvider )    => $"{Value.ToString(format, formatProvider)} rad";
     public          bool   NearlyEquals( Radians other,  double           tolerance = 1e-10 ) => Math.Abs(Value - other.Value) <= tolerance;
 
 
