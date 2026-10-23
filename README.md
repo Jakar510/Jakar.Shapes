@@ -208,6 +208,18 @@ Jakar.Shapes.Tests/          unit tests
 Jakar.Shapes.Experiments/    scratch console project
 ```
 
+## Versioning
+
+Versions are **`<.NET major>.<package major>.<package minor>`**, the scheme every `Jakar.*` library uses:
+
+| Part | Meaning | Example |
+|---|---|---|
+| .NET major | The .NET version the package targets. Moving to a new .NET release changes it. | **10**.1.0 targets .NET 10 |
+| Package major | Breaking changes: removed or changed public API, or a different wire format. The minor resets. | 10.**2**.0 → 10.**3**.0 |
+| Package minor | New features and fixes that don't break existing code. | 10.2.**0** → 10.2.**1** |
+
+A new package starts at `<.NET major>.1.0`. Pre-releases add a suffix: `10.1.0-beta.1`.
+
 ## License
 
 MIT — see [LICENSE.txt](./LICENSE.txt).
