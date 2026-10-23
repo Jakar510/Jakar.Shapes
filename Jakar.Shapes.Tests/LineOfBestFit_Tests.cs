@@ -33,7 +33,7 @@ public sealed class LineOfBestFit_Tests : Assert
                        : x;
 
         double result = ascending[^1];
-        for ( int i = ascending.Length - 2; i >= 0; i-- ) { result = ( result * t ) + ascending[i]; }
+        for ( int i = ascending.Length - 2; i >= 0; i-- ) { result = result * t + ascending[i]; }
 
         return result;
     }
@@ -49,8 +49,8 @@ public sealed class LineOfBestFit_Tests : Assert
     }
 
 
-    private static void AreClose( double expected, double actual ) => Assert.That(actual, Is.EqualTo(expected).Within(( Math.Abs(expected) * RELATIVE_TOLERANCE ) + ABSOLUTE_TOLERANCE));
-    private static void IsInvalidAt( CalculatedLine line, double x ) => Assert.That(double.IsNaN(line[x]), Is.True, $"expected an invalid (NaN) result at x = {x}");
+    private static void AreClose( double            expected, double actual ) => Assert.That(actual,                Is.EqualTo(expected).Within(Math.Abs(expected) * RELATIVE_TOLERANCE + ABSOLUTE_TOLERANCE));
+    private static void IsInvalidAt( CalculatedLine line,     double x )      => Assert.That(double.IsNaN(line[x]), Is.True, $"expected an invalid (NaN) result at x = {x}");
 
 
     private static void ReproducesAllPoints( ref readonly Spline spline, PolynomialFit fit )
@@ -117,10 +117,10 @@ public sealed class LineOfBestFit_Tests : Assert
     public void EveryDegree_WithAllTermsPresent_IsRecovered( sbyte degree )
     {
         Span<double> ascending = stackalloc double[degree + 1];
-        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }   // every term non-zero
+        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + 0.5 * k; }   // every term non-zero
 
         Span<double> xs = stackalloc double[degree + 4];
-        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + 0.7 * i; }
 
         Spline        spline = Curve(ascending, degree, xs);
         PolynomialFit fit    = LineOfBestFit.Fit(in spline, degree);
@@ -156,10 +156,10 @@ public sealed class LineOfBestFit_Tests : Assert
     {
         int      terms     = Math.Abs(degree) + 1;
         Span<double> ascending = stackalloc double[terms];
-        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
+        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + 0.5 * k; }
 
         Span<double> xs = stackalloc double[terms + 3];
-        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + 0.6 * i; }
 
         Spline        spline = Curve(ascending, degree, xs);
         PolynomialFit fit    = LineOfBestFit.Fit(in spline, degree);
@@ -218,10 +218,10 @@ public sealed class LineOfBestFit_Tests : Assert
     public void AutoSearch_RecoversGeneratingDegree( sbyte degree )
     {
         Span<double> ascending = stackalloc double[degree + 1];
-        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
+        for ( int k = 0; k <= degree; k++ ) { ascending[k] = 1.0 + 0.5 * k; }
 
         Span<double> xs = stackalloc double[degree + 5];
-        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + ( 0.7 * i ); }
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.5 + 0.7 * i; }
 
         Spline        spline = Curve(ascending, degree, xs);
         PolynomialFit fit    = LineOfBestFit.Fit(in spline);
@@ -238,10 +238,10 @@ public sealed class LineOfBestFit_Tests : Assert
     {
         int      terms     = Math.Abs(degree) + 1;
         Span<double> ascending = stackalloc double[terms];
-        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + ( 0.5 * k ); }
+        for ( int k = 0; k < terms; k++ ) { ascending[k] = 1.0 + 0.5 * k; }
 
         Span<double> xs = stackalloc double[terms + 4];
-        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + ( 0.6 * i ); }
+        for ( int i = 0; i < xs.Length; i++ ) { xs[i] = 0.6 + 0.6 * i; }
 
         Spline spline = Curve(ascending, degree, xs);
         Assert.That(LineOfBestFit.Fit(in spline)

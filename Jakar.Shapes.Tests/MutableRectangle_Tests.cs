@@ -369,7 +369,7 @@ public sealed class MutableRectangle_Tests : Assert
     [Test] public void Ampersand_Replacement_ReadOnlyPointF_WorkAsExpected()
     {
         MutableRectangle result = __fiveRect;
-        result &= ( ReadOnlyPointF.One * 2 );
+        result &= ReadOnlyPointF.One * 2;
         this.AreEqual(2, result.X);
         this.AreEqual(2, result.Y);
         this.AreEqual(5, result.Width);
@@ -407,7 +407,7 @@ public sealed class MutableRectangle_Tests : Assert
     [Test] public void Ampersand_Replacement_ReadOnlySizeF_WorkAsExpected()
     {
         MutableRectangle result = __fiveRect;
-        result &= ( ReadOnlySizeF.One * 2 );
+        result &= ReadOnlySizeF.One * 2;
         this.AreEqual(5, result.X);
         this.AreEqual(5, result.Y);
         this.AreEqual(2, result.Width);

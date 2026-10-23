@@ -11,8 +11,8 @@ public sealed class RegularPolygon_Tests : Assert
     private const double TOLERANCE = 1e-9;
 
 
-    private static void AreClose( double expected, double actual, double tolerance = TOLERANCE ) => Assert.That(actual, Is.EqualTo(expected).Within(( Math.Abs(expected) * tolerance ) + tolerance));
-    private static ReadOnlyPoint P( double x, double y ) => new(x, y);
+    private static void          AreClose( double expected, double actual, double tolerance = TOLERANCE ) => Assert.That(actual, Is.EqualTo(expected).Within(Math.Abs(expected) * tolerance + tolerance));
+    private static ReadOnlyPoint P( double        x,        double y ) => new(x, y);
 
 
     // ---------------------------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ public sealed class RegularPolygon_Tests : Assert
             {
                 ReadOnlyPoint a = points[i];
                 ReadOnlyPoint b = points[( i + 1 ) % points.Length];
-                sum += ( a.X * b.Y ) - ( b.X * a.Y );
+                sum += a.X * b.Y - b.X * a.Y;
             }
 
             AreClose(expected, Math.Abs(sum) / 2);

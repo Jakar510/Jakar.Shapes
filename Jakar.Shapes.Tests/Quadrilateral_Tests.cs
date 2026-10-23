@@ -17,7 +17,7 @@ public sealed class Quadrilateral_Tests : Assert
 
     private static void AreClose( double expected, double actual, double tolerance = TOLERANCE ) => Assert.That(actual,
                                                                                                                 Is.EqualTo(expected)
-                                                                                                                  .Within(( Math.Abs(expected) * tolerance ) + tolerance));
+                                                                                                                  .Within(Math.Abs(expected) * tolerance + tolerance));
     private static ReadOnlyPoint P( double x, double y ) => new(x, y);
 
 

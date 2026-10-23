@@ -11,8 +11,8 @@ public sealed class Ellipse_Tests : Assert
     private const double TOLERANCE = 1e-9;
 
 
-    private static void AreClose( double expected, double actual, double tolerance = TOLERANCE ) => Assert.That(actual, Is.EqualTo(expected).Within(( Math.Abs(expected) * tolerance ) + tolerance));
-    private static ReadOnlyPoint P( double x, double y ) => new(x, y);
+    private static void          AreClose( double expected, double actual, double tolerance = TOLERANCE ) => Assert.That(actual, Is.EqualTo(expected).Within(Math.Abs(expected) * tolerance + tolerance));
+    private static ReadOnlyPoint P( double        x,        double y ) => new(x, y);
 
 
     [Test] public void Measurements()
