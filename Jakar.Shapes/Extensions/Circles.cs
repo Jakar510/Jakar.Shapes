@@ -20,7 +20,7 @@ public static class Circles
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.X},{self.Y}";
@@ -320,13 +320,13 @@ public static class Circles
             double cos = Math.Cos(angle.Value);
             double dx  = self.Center.X - origin.X;
             double dy  = self.Center.Y - origin.Y;
-            return TCircle.Create(new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos )), self.Radius);
+            return TCircle.Create(new ReadOnlyPoint(origin.X + dx * cos - dy * sin, origin.Y + dx * sin + dy * cos), self.Radius);
         }
 
         // ----------------------------------------------------------------------------- perimeter sampling
 
         /// <summary> The point on the circumference at <paramref name="angle"/>, measured counter-clockwise from the +X axis. </summary>
-        [Pure] public ReadOnlyPoint PointAt( Radians angle ) => new(self.Center.X + ( self.Radius * Math.Cos(angle.Value) ), self.Center.Y + ( self.Radius * Math.Sin(angle.Value) ));
+        [Pure] public ReadOnlyPoint PointAt( Radians angle ) => new(self.Center.X + self.Radius * Math.Cos(angle.Value), self.Center.Y + self.Radius * Math.Sin(angle.Value));
 
         /// <summary>
         /// Writes <paramref name="resolution"/> evenly spaced points around the circumference into
@@ -362,8 +362,8 @@ public static class Circles
 
             for ( int i = 0; i < resolution; i++ )
             {
-                double angle = rotation.Value + ( i * step );
-                destination[i] = new ReadOnlyPoint(self.Center.X + ( self.Radius * Math.Cos(angle) ), self.Center.Y + ( self.Radius * Math.Sin(angle) ));
+                double angle = rotation.Value + i * step;
+                destination[i] = new ReadOnlyPoint(self.Center.X + self.Radius * Math.Cos(angle), self.Center.Y + self.Radius * Math.Sin(angle));
             }
 
             return destination[..resolution];

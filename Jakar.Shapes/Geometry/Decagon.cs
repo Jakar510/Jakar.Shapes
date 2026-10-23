@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> A regular decagon: 10 equal sides, described by its centre, circumradius and rotation. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Decagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Decagon>
+[JsonModel]
+public readonly partial struct Decagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Decagon>
 {
     /// <summary> Number of sides, always 10. </summary>
     public const int SIDES = 10;
@@ -50,25 +47,6 @@ public readonly struct Decagon( ReadOnlyPoint center, double circumradius, Radia
     [Pure] public static Decagon FromSideLength( in ReadOnlyPoint center, double sideLength ) => new(center, sideLength / ( 2 * Math.Sin(Math.PI / SIDES) ), Radians.Zero);
 
 
-    public static bool TryFromJson( string? json, out Decagon result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Decagon FromJson( string json ) => json.FromJson<Decagon>();
 
 
     public int CompareTo( Decagon other )

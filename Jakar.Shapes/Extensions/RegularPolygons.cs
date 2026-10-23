@@ -22,7 +22,7 @@ public static class RegularPolygons
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.Center},{self.Circumradius}";
@@ -76,8 +76,8 @@ public static class RegularPolygons
 
             for ( int i = 0; i < sides; i++ )
             {
-                double angle = self.Rotation.Value + ( i * step );
-                destination[i] = new ReadOnlyPoint(self.Center.X + ( self.Circumradius * Math.Cos(angle) ), self.Center.Y + ( self.Circumradius * Math.Sin(angle) ));
+                double angle = self.Rotation.Value + i * step;
+                destination[i] = new ReadOnlyPoint(self.Center.X + self.Circumradius * Math.Cos(angle), self.Center.Y + self.Circumradius * Math.Sin(angle));
             }
 
             return destination[..sides];
@@ -209,7 +209,7 @@ public static class RegularPolygons
         {
             double dx       = point.X - self.Center.X;
             double dy       = point.Y - self.Center.Y;
-            double distance = Math.Sqrt(( dx * dx ) + ( dy * dy ));
+            double distance = Math.Sqrt(dx * dx + dy * dy);
 
             // cheap rejects first: inside the inradius is always in, outside the circumradius is always out
             if ( distance <= self.Apothem() + TOLERANCE ) { return true; }
@@ -224,7 +224,7 @@ public static class RegularPolygons
             {
                 ReadOnlyPoint p = points[i];
                 ReadOnlyPoint q = points[j];
-                if ( ( p.Y > point.Y ) != ( q.Y > point.Y ) && point.X < ( ( q.X - p.X ) * ( point.Y - p.Y ) / ( q.Y - p.Y ) ) + p.X ) { inside = !inside; }
+                if ( p.Y > point.Y != q.Y > point.Y && point.X < ( q.X - p.X ) * ( point.Y - p.Y ) / ( q.Y - p.Y ) + p.X ) { inside = !inside; }
             }
 
             return inside;

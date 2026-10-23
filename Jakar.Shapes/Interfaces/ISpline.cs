@@ -10,7 +10,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface ISpline<TSelf, TPoint> : IShape<TSelf>, IStructuralComparable<TSelf>, IValueEnumerable<FromArray<TPoint>, TPoint>
-    where TSelf : struct, ISpline<TSelf, TPoint>, IJsonModel<TSelf>
+    where TSelf : struct, ISpline<TSelf, TPoint>, IJsonSerializable<TSelf>
     where TPoint : struct, IPoint<TPoint>
 {
     public ref readonly TPoint this[ int   index ] { get; }
@@ -28,7 +28,7 @@ public interface ISpline<TSelf, TPoint> : IShape<TSelf>, IStructuralComparable<T
 
 
 public interface ISpline<TSelf> : ISpline<TSelf, ReadOnlyPoint>
-    where TSelf : struct, ISpline<TSelf>, IJsonModel<TSelf>
+    where TSelf : struct, ISpline<TSelf>, IJsonSerializable<TSelf>
 {
     public abstract static implicit operator TSelf( ReadOnlyPoint[]? points );
 }

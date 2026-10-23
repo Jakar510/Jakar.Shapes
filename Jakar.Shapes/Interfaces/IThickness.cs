@@ -26,7 +26,7 @@ public interface IThickness<TSelf> : IShape<TSelf>
             case "json":
             case "JSON":
             case "Json":
-                return self.ToJson();
+                return JsonCodec.ToJson(self);
 
             case ",":
                 return $"{self.Left},{self.Top},{self.Right},{self.Bottom}";

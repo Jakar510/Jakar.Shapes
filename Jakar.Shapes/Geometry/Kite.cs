@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> Four vertices in order. Use IsKite() to verify two disjoint pairs of adjacent equal sides. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Kite( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Kite>
+[JsonModel]
+public readonly partial struct Kite( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Kite>
 {
     public static readonly Kite    Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Kite    Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -34,7 +31,7 @@ public readonly struct Kite( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, 
     ReadOnlyPoint IQuadrilateral<Kite>.   B        => B;
     ReadOnlyPoint IQuadrilateral<Kite>.   C        => C;
     ReadOnlyPoint IQuadrilateral<Kite>.   D        => D;
-    public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
+    [JsonMember(Ignore = true)] public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
 
 
     [Pure] public static Kite Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) => new(a, b, c, d);
@@ -47,25 +44,6 @@ public readonly struct Kite( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, 
     }
 
 
-    public static bool TryFromJson( string? json, out Kite result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Kite FromJson( string json ) => json.FromJson<Kite>();
 
 
     public int CompareTo( Kite other )

@@ -1,17 +1,14 @@
 ﻿// Jakar.Extensions :: Jakar.Shapes
 // 07/14/2025  10:08
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c ) : ITriangle<Triangle>
+[JsonModel]
+public readonly partial struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c ) : ITriangle<Triangle>
 {
     public static readonly Triangle      Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Triangle      Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -26,8 +23,8 @@ public readonly struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint
     static ref readonly Triangle IShape<Triangle>.Invalid  => ref Invalid;
     ReadOnlyPoint IShapeLocation.                 Location => this.Centroid();
     bool IValidator.                              IsValid  => this.IsValid();
-    public bool                                   IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN();
-    public bool                                   IsValid  => !IsNaN;
+    [JsonMember(Ignore = true)] public bool                                   IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN();
+    [JsonMember(Ignore = true)] public bool                                   IsValid  => !IsNaN;
     ReadOnlyPoint ITriangle<Triangle>.            A        => A;
     ReadOnlyPoint ITriangle<Triangle>.            B        => B;
     ReadOnlyPoint ITriangle<Triangle>.            C        => C;
@@ -39,25 +36,6 @@ public readonly struct Triangle( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint
                                    .Y;
 
 
-    public static bool TryFromJson( string? json, out Triangle result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Triangle FromJson( string      json )                                => json.FromJson<Triangle>();
     public static Triangle Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c ) => new(a, b, c);
 
 

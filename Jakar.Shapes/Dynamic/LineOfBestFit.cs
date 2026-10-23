@@ -38,7 +38,7 @@ public static class LineOfBestFit
     private const int MAX_TERMS = MAX_AUTO_SEARCH_POWER + 1;
 
     /// <summary> Candidate count across the whole search: degree 0, then +/-1 through +/-<see cref="MAX_AUTO_SEARCH_POWER"/>. </summary>
-    private const int CANDIDATE_COUNT = ( 2 * MAX_AUTO_SEARCH_POWER ) + 1;
+    private const int CANDIDATE_COUNT = 2 * MAX_AUTO_SEARCH_POWER + 1;
 
     /// <summary>
     /// F-ratio a higher degree must exceed before it is considered a genuine improvement. Raising this favours simpler
@@ -180,7 +180,7 @@ public static class LineOfBestFit
             double richer = Math.Max(errors[j], floor);
             if ( richer <= 0 ) { continue; }
 
-            double ratio = ( ( error - errors[j] ) / extra ) / ( richer / dof );
+            double ratio = ( error - errors[j] ) / extra / ( richer / dof );
             if ( ratio > SIGNIFICANCE_THRESHOLD ) { return true; }
         }
 
@@ -220,11 +220,11 @@ public static class LineOfBestFit
 
         int       cells  = rows * terms;
         double[]? rented = rows > STACK_LIMIT
-                               ? ArrayPool<double>.Shared.Rent(cells + ( 2 * rows ))
+                               ? ArrayPool<double>.Shared.Rent(cells + 2 * rows)
                                : null;
 
         Span<double> scratch = rented is null
-                                   ? stackalloc double[( STACK_LIMIT * MAX_TERMS ) + ( 2 * STACK_LIMIT )]
+                                   ? stackalloc double[STACK_LIMIT * MAX_TERMS + 2 * STACK_LIMIT]
                                    : rented;
 
         try
@@ -286,14 +286,14 @@ public static class LineOfBestFit
             double norm = 0.0;
             for ( int row = k; row < rows; row++ )
             {
-                double cell = matrix[( row * terms ) + k];
+                double cell = matrix[row * terms + k];
                 norm += cell * cell;
             }
 
             norm = Math.Sqrt(norm);
             if ( !double.IsFinite(norm) || norm < RANK_TOLERANCE ) { return false; }
 
-            for ( int row = k; row < rows; row++ ) { vector[row] = matrix[( row * terms ) + k]; }
+            for ( int row = k; row < rows; row++ ) { vector[row] = matrix[row * terms + k]; }
 
             double alpha = vector[k] >= 0
                                ? -norm
@@ -309,10 +309,10 @@ public static class LineOfBestFit
             for ( int column = k; column < terms; column++ )
             {
                 double dot = 0.0;
-                for ( int row = k; row < rows; row++ ) { dot += vector[row] * matrix[( row * terms ) + column]; }
+                for ( int row = k; row < rows; row++ ) { dot += vector[row] * matrix[row * terms + column]; }
 
-                double factor = 2.0 * dot / squared;
-                for ( int row = k; row < rows; row++ ) { matrix[( row * terms ) + column] -= factor * vector[row]; }
+                double factor = 2.0 * dot                                                       / squared;
+                for ( int row = k; row < rows; row++ ) { matrix[row * terms + column] -= factor * vector[row]; }
             }
 
             double dotRhs = 0.0;
@@ -332,7 +332,7 @@ public static class LineOfBestFit
         // sharing one x give a diagonal around 1e-16 of the leading pivot, which is singular but far above any
         // fixed epsilon.
         double largest = 0.0;
-        for ( int i = 0; i < terms; i++ ) { largest = Math.Max(largest, Math.Abs(matrix[( i * terms ) + i])); }
+        for ( int i = 0; i < terms; i++ ) { largest = Math.Max(largest, Math.Abs(matrix[i * terms + i])); }
 
         if ( largest <= RANK_TOLERANCE ) { return false; }
 
@@ -341,9 +341,9 @@ public static class LineOfBestFit
         for ( int i = terms - 1; i >= 0; i-- )
         {
             double sum = rhs[i];
-            for ( int j = i + 1; j < terms; j++ ) { sum -= matrix[( i * terms ) + j] * coefficients[j]; }
+            for ( int j = i + 1; j < terms; j++ ) { sum -= matrix[i * terms + j] * coefficients[j]; }
 
-            double diagonal = matrix[( i * terms ) + i];
+            double diagonal = matrix[i * terms + i];
             if ( Math.Abs(diagonal) <= tolerance ) { return false; }
 
             double value = sum / diagonal;
@@ -367,7 +367,7 @@ public static class LineOfBestFit
                            : point.X;
 
             double predicted = coefficients[terms - 1];
-            for ( int i = terms - 2; i >= 0; i-- ) { predicted = ( predicted * t ) + coefficients[i]; }
+            for ( int i = terms - 2; i >= 0; i-- ) { predicted = predicted * t + coefficients[i]; }
 
             if ( !double.IsFinite(predicted) ) { return double.PositiveInfinity; }
 

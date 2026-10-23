@@ -6,7 +6,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface IRectangle<TSelf> : IShape<TSelf>, IShapeSize, IShapeLocation
-    where TSelf : struct, IRectangle<TSelf>, IJsonModel<TSelf>
+    where TSelf : struct, IRectangle<TSelf>, IJsonSerializable<TSelf>
 {
     public abstract static implicit operator Rectangle( TSelf  self );
     public abstract static implicit operator RectangleF( TSelf self );
@@ -40,7 +40,7 @@ public interface IRectangle<TSelf> : IShape<TSelf>, IShapeSize, IShapeLocation
             case "json":
             case "JSON":
             case "Json":
-                return self.ToJson();
+                return JsonCodec.ToJson(self);
 
             case ",":
                 return $"{self.X},{self.Y},{self.Width},{self.Height}";

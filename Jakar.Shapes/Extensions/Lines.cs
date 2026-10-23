@@ -16,7 +16,7 @@ public static class Lines
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.Start.ToString(format, null)},{self.End.ToString(format, null)}";

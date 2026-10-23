@@ -5,7 +5,8 @@ namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-public readonly record struct Degrees( double Value ) : IFormattable, IMathOperators<Degrees, double>
+[JsonModel]
+public readonly partial record struct Degrees( double Value ) : IFormattable, IMathOperators<Degrees, double>
 {
     public const           double    INCREMENT = 180;
     public const           double    MAX_VALUE = 360;

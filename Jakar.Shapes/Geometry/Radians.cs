@@ -5,7 +5,8 @@ namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-public readonly record struct Radians( double Value ) : IFormattable, IMathOperators<Radians, double>
+[JsonModel]
+public readonly partial record struct Radians( double Value ) : IFormattable, IMathOperators<Radians, double>
 {
     public const           double    INCREMENT = Math.PI / 180;
     public const           double    MAX_VALUE = 2       * Math.PI;

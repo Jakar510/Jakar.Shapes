@@ -1,17 +1,14 @@
 ﻿// TrueLogic :: TrueLogic.Common.Maui
 // 01/20/2025  08:01
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlySizeF( float width, float height ) : ISize<ReadOnlySizeF>, IMathOperators<ReadOnlySizeF>
+[JsonModel]
+public readonly partial struct ReadOnlySizeF( float width, float height ) : ISize<ReadOnlySizeF>, IMathOperators<ReadOnlySizeF>
 {
     public static readonly ReadOnlySizeF Invalid = new(float.NaN, float.NaN);
     public static readonly ReadOnlySizeF Zero    = 0;
@@ -40,25 +37,6 @@ public readonly struct ReadOnlySizeF( float width, float height ) : ISize<ReadOn
     public static implicit operator ReadOnlySizeF( double       value )     => new(value.AsFloat(), value.AsFloat());
 
 
-    public static bool TryFromJson( string? json, out ReadOnlySizeF result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static        ReadOnlySizeF  FromJson( string json )        => json.FromJson<ReadOnlySizeF>();
     [Pure] public static ReadOnlySizeF Create( float    x, float  y ) => new(x, y);
     [Pure] public static ReadOnlySizeF Create( double   x, double y ) => new((float)x, (float)y);
 

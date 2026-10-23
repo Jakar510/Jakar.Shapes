@@ -25,14 +25,14 @@ dotnet add package Jakar.Shapes
 | Value types only | Every model is a `readonly struct` (except `MutableRectangle` / `MutableSize`). No allocation for the shapes themselves. |
 | `static abstract` factories | Each interface declares `Create(...)`, `Invalid`, `Zero`, `One`, and the arithmetic operators, so generic code can construct and combine shapes without a factory delegate. |
 | Extension blocks | Shared geometry (area, perimeter, hit-testing, transforms) is written **once** per interface inside a C# 14 `extension<TShape>( TShape self )` block and applies to every implementer. |
-| JSON built in | Shapes implement `IJsonModel<TSelf>` from `Jakar.Extensions` — `ToJson()`, `FromJson(...)`, `TryFromJson(...)`. |
+| JSON built in | Shapes are `[JsonModel]` types serialized by Jakar.Json (`IJsonSerializable<TSelf>`): `ToJson()`, `FromJson(...)`, `TryFromJson(...)`, reflection- and allocation-free. Only the constructor data is written; computed members are ignored. |
 | Validity over exceptions | `Invalid` is `NaN`-filled rather than null; check `IsValid` / `IsNaN` / `IsFinite` instead of catching. |
 | Interop | Implicit conversions to and from `System.Drawing`'s `Point`, `PointF`, `Size`, `SizeF`, `Rectangle`, `RectangleF`, plus scalar promotion (`ReadOnlyPoint p = 5;`). |
 
 ### Interface hierarchy
 
 ```
-IShape<TSelf>  : IValidator, IFormattable, IJsonModel<TSelf>, IEqualComparable<TSelf>
+IShape<TSelf>  : IValidator, IFormattable, IJsonSerializable<TSelf>, IEqualComparable<TSelf>
   ├── IPoint<TSelf>            + IShapeLocation
   ├── ISize<TSelf>             + IShapeSize
   ├── IThickness<TSelf>

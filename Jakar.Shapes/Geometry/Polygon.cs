@@ -3,8 +3,6 @@
 
 using System.Collections;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 using ZLinq;
 using ZLinq.Linq;
 
@@ -14,11 +12,11 @@ namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Invalid))]
-[method: JsonConstructor]
 // The array parameter is required: this is the JsonConstructor, and System.Text.Json binds constructor
 // arguments by reflection, which cannot pass a ref struct. Polygon also has to own an array, since a struct
 // cannot hold a Span field. Prefer the ReadOnlySpan constructor and Create overload from calling code.
-public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polygon>
+[JsonModel]
+public readonly partial struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polygon>
 {
     // __empty must be declared first: static initialisers run in declaration order, and the three
     // sentinels below consume it. Declared after, it is still null when they are built, so their
@@ -36,11 +34,11 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
     static ref readonly Polygon IShape<Polygon>.                Zero    => ref Zero;
     static ref readonly Polygon IShape<Polygon>.                One     => ref One;
     static ref readonly Polygon IShape<Polygon>.                Invalid => ref Invalid;
-    [JsonIgnore] public ReadOnlySpan<ReadOnlyPoint>             Span    => Points;
-    public              int                                     Length  => Points?.Length ?? 0;
+    [JsonMember(Ignore = true)] public ReadOnlySpan<ReadOnlyPoint>             Span    => Points;
+    [JsonMember(Ignore = true)] public              int                                     Length  => Points?.Length ?? 0;
     ReadOnlySpan<ReadOnlyPoint> ISpline<Polygon, ReadOnlyPoint>.Points  => Points;
-    public bool                                                 IsEmpty => Points is not { Length: > 1 };
-    public bool IsNaN
+    [JsonMember(Ignore = true)] public bool                                                 IsEmpty => Points is not { Length: > 1 };
+    [JsonMember(Ignore = true)] public bool IsNaN
     {
         get
         {
@@ -48,7 +46,7 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
             return span.Any(static ( ref readonly ReadOnlyPoint x ) => x.IsNaN());
         }
     }
-    public bool IsValid => !IsEmpty && !IsNaN;
+    [JsonMember(Ignore = true)] public bool IsValid => !IsEmpty && !IsNaN;
 
 
     /// <summary>
@@ -80,25 +78,6 @@ public readonly struct Polygon( params ReadOnlyPoint[]? points ) : ISpline<Polyg
     [Pure] public ValueEnumerable<FromArray<ReadOnlyPoint>, ReadOnlyPoint> AsValueEnumerable() => new(new FromArray<ReadOnlyPoint>(Points));
 
 
-    public static bool TryFromJson( string? json, out Polygon result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Polygon FromJson( string json ) => json.FromJson<Polygon>();
 
 
     public int CompareTo( object? other, IComparer comparer ) => other is Polygon spline

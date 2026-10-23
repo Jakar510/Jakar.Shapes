@@ -1,14 +1,12 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
+﻿
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlySize( double width, double height ) : ISize<ReadOnlySize>, IMathOperators<ReadOnlySize>
+[JsonModel]
+public readonly partial struct ReadOnlySize( double width, double height ) : ISize<ReadOnlySize>, IMathOperators<ReadOnlySize>
 {
     public static readonly ReadOnlySize Invalid = new(double.NaN, double.NaN);
     public static readonly ReadOnlySize Zero    = 0;
@@ -30,25 +28,6 @@ public readonly struct ReadOnlySize( double width, double height ) : ISize<ReadO
     [Pure] public static ReadOnlySize Create( double width, double height ) => new(width, height);
 
 
-    public static bool TryFromJson( string? json, out ReadOnlySize result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlySize FromJson( string json ) => json.FromJson<ReadOnlySize>();
 
 
     public int CompareTo( ReadOnlySize other )

@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> A regular heptagon: 7 equal sides, described by its centre, circumradius and rotation. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Heptagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Heptagon>
+[JsonModel]
+public readonly partial struct Heptagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Heptagon>
 {
     /// <summary> Number of sides, always 7. </summary>
     public const int SIDES = 7;
@@ -50,25 +47,6 @@ public readonly struct Heptagon( ReadOnlyPoint center, double circumradius, Radi
     [Pure] public static Heptagon FromSideLength( in ReadOnlyPoint center, double sideLength ) => new(center, sideLength / ( 2 * Math.Sin(Math.PI / SIDES) ), Radians.Zero);
 
 
-    public static bool TryFromJson( string? json, out Heptagon result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Heptagon FromJson( string json ) => json.FromJson<Heptagon>();
 
 
     public int CompareTo( Heptagon other )

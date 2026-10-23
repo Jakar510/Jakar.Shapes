@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> Four vertices in order. Use IsRhombus() to verify all four sides are equal. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Rhombus( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Rhombus>
+[JsonModel]
+public readonly partial struct Rhombus( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Rhombus>
 {
     public static readonly Rhombus    Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Rhombus    Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -34,7 +31,7 @@ public readonly struct Rhombus( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint 
     ReadOnlyPoint IQuadrilateral<Rhombus>.   B        => B;
     ReadOnlyPoint IQuadrilateral<Rhombus>.   C        => C;
     ReadOnlyPoint IQuadrilateral<Rhombus>.   D        => D;
-    public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
+    [JsonMember(Ignore = true)] public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
 
 
     [Pure] public static Rhombus Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) => new(a, b, c, d);
@@ -48,25 +45,6 @@ public readonly struct Rhombus( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint 
     }
 
 
-    public static bool TryFromJson( string? json, out Rhombus result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Rhombus FromJson( string json ) => json.FromJson<Rhombus>();
 
 
     public int CompareTo( Rhombus other )

@@ -1,17 +1,14 @@
 ﻿// Jakar.Extensions :: Jakar.Extensions
 // 07/11/2025  15:17
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public struct MutableSize( double width, double height ) : ISize<MutableSize>
+[JsonModel]
+public partial struct MutableSize( double width, double height ) : ISize<MutableSize>
 {
     public static readonly MutableSize Invalid = new(double.NaN, double.NaN);
     public static readonly MutableSize Zero    = 0;
@@ -101,25 +98,6 @@ public struct MutableSize( double width, double height ) : ISize<MutableSize>
     }
 
 
-    public static bool TryFromJson( string? json, out MutableSize result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static        MutableSize FromJson( string             json )                 => json.FromJson<MutableSize>();
     [Pure] public static MutableSize Create( double               width, double height ) => new(width, height);
     [Pure] public static MutableSize Create( in MutableSize       size )    => new(size.Width, size.Height);
     [Pure] public static MutableSize Create( in ReadOnlySizeF     size )    => new(size.Width, size.Height);

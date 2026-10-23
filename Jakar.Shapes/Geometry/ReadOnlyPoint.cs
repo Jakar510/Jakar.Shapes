@@ -1,14 +1,12 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
+﻿
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlyPoint( double x, double y ) : IPoint<ReadOnlyPoint>, IMathOperators<ReadOnlyPoint>, IEqualComparable<ReadOnlyPoint>
+[JsonModel]
+public readonly partial struct ReadOnlyPoint( double x, double y ) : IPoint<ReadOnlyPoint>, IMathOperators<ReadOnlyPoint>, IEqualComparable<ReadOnlyPoint>
 {
     public static readonly ReadOnlyPoint Invalid       = new(double.NaN, double.NaN);
     public static readonly ReadOnlyPoint Zero          = 0;
@@ -59,25 +57,6 @@ public readonly struct ReadOnlyPoint( double x, double y ) : IPoint<ReadOnlyPoin
 
     [Pure] public static ReadOnlyPoint Create( float  x, float  y ) => new(x, y);
     [Pure] public static ReadOnlyPoint Create( double x, double y ) => new(x, y);
-    public static bool TryFromJson( string? json, out ReadOnlyPoint result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlyPoint FromJson( string json ) => json.FromJson<ReadOnlyPoint>();
 
 
     public int CompareTo( ReadOnlyPoint other )

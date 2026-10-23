@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> Four vertices in order. Use IsTrapezoid() to verify at least one pair of parallel sides. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Trapezoid( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Trapezoid>
+[JsonModel]
+public readonly partial struct Trapezoid( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Trapezoid>
 {
     public static readonly Trapezoid    Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Trapezoid    Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -34,7 +31,7 @@ public readonly struct Trapezoid( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoin
     ReadOnlyPoint IQuadrilateral<Trapezoid>.   B        => B;
     ReadOnlyPoint IQuadrilateral<Trapezoid>.   C        => C;
     ReadOnlyPoint IQuadrilateral<Trapezoid>.   D        => D;
-    public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
+    [JsonMember(Ignore = true)] public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
 
 
     [Pure] public static Trapezoid Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) => new(a, b, c, d);
@@ -47,25 +44,6 @@ public readonly struct Trapezoid( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoin
     }
 
 
-    public static bool TryFromJson( string? json, out Trapezoid result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Trapezoid FromJson( string json ) => json.FromJson<Trapezoid>();
 
 
     public int CompareTo( Trapezoid other )

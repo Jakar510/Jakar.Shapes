@@ -5,7 +5,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface IMutableRectangle<TSelf> : IRectangle<TSelf>
-    where TSelf : struct, IMutableRectangle<TSelf>, IJsonModel<TSelf>
+    where TSelf : struct, IMutableRectangle<TSelf>, IJsonSerializable<TSelf>
 {
     public new double Height { get; set; }
     public new double Width  { get; set; }

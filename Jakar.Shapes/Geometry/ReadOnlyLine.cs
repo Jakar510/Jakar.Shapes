@@ -2,17 +2,13 @@
 // 07/12/2025  19:15
 
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
-
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, bool isFinite = true ) : ILine<ReadOnlyLine>, IMathOperators<ReadOnlyLine>
+[JsonModel]
+public readonly partial struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, bool isFinite = true ) : ILine<ReadOnlyLine>, IMathOperators<ReadOnlyLine>
 {
     public static readonly ReadOnlyLine  Invalid  = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly ReadOnlyLine  Zero     = 0;
@@ -29,7 +25,7 @@ public readonly struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, boo
     ReadOnlyPoint ILine<ReadOnlyLine, ReadOnlyPoint>.     Start         => Start;
     ReadOnlyPoint ILine<ReadOnlyLine, ReadOnlyPoint>.     End           => End;
     bool ILine<ReadOnlyLine, ReadOnlyPoint>.              IsFinite      => IsFinite;
-    public double                                         Length        => Start.DistanceTo(End);
+    [JsonMember(Ignore = true)] public double                                         Length        => Start.DistanceTo(End);
 
 
     public static implicit operator ReadOnlyLine( int    other ) => new(ReadOnlyPoint.Zero, other);
@@ -39,25 +35,6 @@ public readonly struct ReadOnlyLine( ReadOnlyPoint start, ReadOnlyPoint end, boo
 
 
     [Pure] public static ReadOnlyLine Create( in ReadOnlyPoint start, in ReadOnlyPoint end, bool isFinite = true ) => new(start, end, isFinite);
-    public static bool TryFromJson( string? json, out ReadOnlyLine result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlyLine FromJson( string json ) => json.FromJson<ReadOnlyLine>();
 
 
     public int CompareTo( ReadOnlyLine other )

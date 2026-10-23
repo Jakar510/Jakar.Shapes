@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> A regular nonagon: 9 equal sides, described by its centre, circumradius and rotation. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Nonagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Nonagon>
+[JsonModel]
+public readonly partial struct Nonagon( ReadOnlyPoint center, double circumradius, Radians rotation ) : IRegularPolygon<Nonagon>
 {
     /// <summary> Number of sides, always 9. </summary>
     public const int SIDES = 9;
@@ -50,25 +47,6 @@ public readonly struct Nonagon( ReadOnlyPoint center, double circumradius, Radia
     [Pure] public static Nonagon FromSideLength( in ReadOnlyPoint center, double sideLength ) => new(center, sideLength / ( 2 * Math.Sin(Math.PI / SIDES) ), Radians.Zero);
 
 
-    public static bool TryFromJson( string? json, out Nonagon result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Nonagon FromJson( string json ) => json.FromJson<Nonagon>();
 
 
     public int CompareTo( Nonagon other )

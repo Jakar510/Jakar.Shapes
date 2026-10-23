@@ -63,7 +63,7 @@ public readonly struct PolynomialFit
                            : x;
 
             double result = coefficients[^1];
-            for ( int i = coefficients.Length - 2; i >= 0; i-- ) { result = ( result * t ) + coefficients[i]; }
+            for ( int i = coefficients.Length - 2; i >= 0; i-- ) { result = result * t + coefficients[i]; }
 
             return result;
         }

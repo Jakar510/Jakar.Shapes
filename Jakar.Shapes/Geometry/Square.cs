@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> Four vertices in order. Squareness is not an invariant of the type -- use IsSquare() to check. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Square( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Square>
+[JsonModel]
+public readonly partial struct Square( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Square>
 {
     public static readonly Square    Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Square    Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -34,7 +31,7 @@ public readonly struct Square( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c
     ReadOnlyPoint IQuadrilateral<Square>.   B        => B;
     ReadOnlyPoint IQuadrilateral<Square>.   C        => C;
     ReadOnlyPoint IQuadrilateral<Square>.   D        => D;
-    public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
+    [JsonMember(Ignore = true)] public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
 
 
     [Pure] public static Square Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) => new(a, b, c, d);
@@ -44,25 +41,6 @@ public readonly struct Square( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c
         new(origin, new ReadOnlyPoint(origin.X + side, origin.Y), new ReadOnlyPoint(origin.X + side, origin.Y + side), new ReadOnlyPoint(origin.X, origin.Y + side));
 
 
-    public static bool TryFromJson( string? json, out Square result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Square FromJson( string json ) => json.FromJson<Square>();
 
 
     public int CompareTo( Square other )

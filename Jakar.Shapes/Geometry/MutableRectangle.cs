@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-using ZLinq;
+﻿using ZLinq;
 using ZLinq.Linq;
 
 
@@ -9,8 +7,8 @@ namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public struct MutableRectangle( double x, double y, double width, double height ) : IMutableRectangle<MutableRectangle>
+[JsonModel]
+public partial struct MutableRectangle( double x, double y, double width, double height ) : IMutableRectangle<MutableRectangle>
 {
     public static readonly MutableRectangle Invalid = new(double.NaN, double.NaN, double.NaN, double.NaN);
     public static readonly MutableRectangle Zero    = new(0, 0, 0, 0);
@@ -25,7 +23,7 @@ public struct MutableRectangle( double x, double y, double width, double height 
     public double                                                 Y       { get; set; } = y;
     public double                                                 Width   { get; set; } = width;
     public double                                                 Height  { get; set; } = height;
-    public ReadOnlyPoint Location
+    [JsonMember(Ignore = true)] public ReadOnlyPoint Location
     {
         readonly get => new(X, Y);
         set
@@ -34,7 +32,7 @@ public struct MutableRectangle( double x, double y, double width, double height 
             Y = value.Y;
         }
     }
-    public ReadOnlySize Size
+    [JsonMember(Ignore = true)] public ReadOnlySize Size
     {
         readonly get => new(Width, Height);
         set
@@ -64,25 +62,6 @@ public struct MutableRectangle( double x, double y, double width, double height 
     public static implicit operator MutableRectangle( double             other ) => new(other, other, other, other);
 
 
-    public static bool TryFromJson( string? json, out MutableRectangle result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static MutableRectangle FromJson( string json ) => json.FromJson<MutableRectangle>();
     [Pure] public static MutableRectangle Create<TPoint>( params ReadOnlySpan<TPoint> points )
         where TPoint : struct, IPoint<TPoint>
     {

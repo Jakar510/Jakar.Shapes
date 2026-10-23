@@ -16,7 +16,7 @@ public static class Triangles
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.X},{self.Y}";
@@ -47,7 +47,7 @@ public static class Triangles
         public ReadOnlyLine  Ab()         => new(self.A, self.B);
         public ReadOnlyLine  Bc()         => new(self.B, self.C);
         public ReadOnlyLine  Ca()         => new(self.C, self.A);
-        public double        Area()       => Math.Abs((( self.B.X - self.A.X ) * ( self.C.Y - self.A.Y )) - (( self.C.X - self.A.X ) * ( self.B.Y - self.A.Y ))) / 2.0;
+        public double        Area()       => Math.Abs(( self.B.X - self.A.X ) * ( self.C.Y - self.A.Y ) - ( self.C.X - self.A.X ) * ( self.B.Y - self.A.Y )) / 2.0;
         public ReadOnlyPoint Centroid()   => new(( self.A.X + self.B.X + self.C.X ) / 3, ( self.A.Y + self.B.Y + self.C.Y ) / 3);
         public Degrees       Abc()        => new(self.A.AngleBetween(self.B, self.C));
         public Degrees       Bac()        => new(self.B.AngleBetween(self.A, self.C));
@@ -139,11 +139,11 @@ public static class Triangles
         public Circle CircumscribedCircle()
         {
             double ax = self.A.X, ay = self.A.Y, bx = self.B.X, by = self.B.Y, cx = self.C.X, cy = self.C.Y;
-            double d  = 2 * ( ( ax * ( by - cy ) ) + ( bx * ( cy - ay ) ) + ( cx * ( ay - by ) ) );
+            double d  = 2 * ( ax * ( by - cy ) + bx * ( cy - ay ) + cx * ( ay - by ) );
             if ( Math.Abs(d) < 1e-12 ) { return Circle.Invalid; }
 
-            double ux = ( ( ( ax * ax ) + ( ay * ay ) ) * ( by - cy ) ) + ( ( ( bx * bx ) + ( by * by ) ) * ( cy - ay ) ) + ( ( ( cx * cx ) + ( cy * cy ) ) * ( ay - by ) );
-            double uy = ( ( ( ax * ax ) + ( ay * ay ) ) * ( cx - bx ) ) + ( ( ( bx * bx ) + ( by * by ) ) * ( ax - cx ) ) + ( ( ( cx * cx ) + ( cy * cy ) ) * ( bx - ax ) );
+            double        ux     = ( ax * ax + ay * ay ) * ( by - cy ) + ( bx * bx + by * by ) * ( cy - ay ) + ( cx * cx + cy * cy ) * ( ay - by );
+            double        uy     = ( ax * ax + ay * ay ) * ( cx - bx ) + ( bx * bx + by * by ) * ( ax - cx ) + ( cx * cx + cy * cy ) * ( bx - ax );
             ReadOnlyPoint center = new(ux / d, uy / d);
             return new Circle(center, center.DistanceTo(self.A));
         }
@@ -155,7 +155,7 @@ public static class Triangles
             double perimeter = ab + bc + ca;
             if ( perimeter <= 1e-12 ) { return Circle.Invalid; }
 
-            ReadOnlyPoint center = new(( ( bc * self.A.X ) + ( ca * self.B.X ) + ( ab * self.C.X ) ) / perimeter, ( ( bc * self.A.Y ) + ( ca * self.B.Y ) + ( ab * self.C.Y ) ) / perimeter);
+            ReadOnlyPoint center = new(( bc * self.A.X + ca * self.B.X + ab * self.C.X ) / perimeter, ( bc * self.A.Y + ca * self.B.Y + ab * self.C.Y ) / perimeter);
             return new Circle(center, 2 * self.Area() / perimeter);
         }
 
@@ -182,15 +182,15 @@ public static class Triangles
 }
 
 
-    private static double Sign( in ReadOnlyPoint p, in ReadOnlyPoint a, in ReadOnlyPoint b ) => (( p.X - b.X ) * ( a.Y - b.Y )) - (( a.X - b.X ) * ( p.Y - b.Y ));
+    private static double Sign( in ReadOnlyPoint p, in ReadOnlyPoint a, in ReadOnlyPoint b ) => ( p.X - b.X ) * ( a.Y - b.Y ) - ( a.X - b.X ) * ( p.Y - b.Y );
 
     private static ReadOnlyPoint ScaleAbout( in ReadOnlyPoint point, in ReadOnlyPoint origin, double factor ) =>
-        new(origin.X + (( point.X - origin.X ) * factor), origin.Y + (( point.Y - origin.Y ) * factor));
+        new(origin.X + ( point.X - origin.X ) * factor, origin.Y + ( point.Y - origin.Y ) * factor);
 
     private static ReadOnlyPoint RotateAbout( in ReadOnlyPoint point, in ReadOnlyPoint origin, double sin, double cos )
     {
-        double dx = point.X - origin.X;
-        double dy = point.Y - origin.Y;
-        return new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos ));
+        double dx = point.X                          - origin.X;
+        double dy = point.Y                          - origin.Y;
+        return new ReadOnlyPoint(origin.X + dx * cos - dy * sin, origin.Y + dx * sin + dy * cos);
     }
 }

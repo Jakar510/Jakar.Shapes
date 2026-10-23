@@ -19,7 +19,7 @@ public static class Quadrilaterals
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.A},{self.B},{self.C},{self.D}";
@@ -72,8 +72,8 @@ public static class Quadrilaterals
 
         /// <summary> Area by the shoelace formula. Correct for any simple (non self-intersecting) quadrilateral. </summary>
         public double Area() =>
-            Math.Abs((( self.A.X * self.B.Y ) - ( self.B.X * self.A.Y )) + (( self.B.X * self.C.Y ) - ( self.C.X * self.B.Y )) + (( self.C.X * self.D.Y ) - ( self.D.X * self.C.Y )) +
-                     (( self.D.X * self.A.Y ) - ( self.A.X * self.D.Y ))) / 2.0;
+            Math.Abs(self.A.X * self.B.Y - self.B.X * self.A.Y + (self.B.X * self.C.Y - self.C.X * self.B.Y) + (self.C.X * self.D.Y - self.D.X * self.C.Y) +
+                     (self.D.X                                             * self.A.Y - self.A.X * self.D.Y)) / 2.0;
 
         public double Perimeter()
         {
@@ -151,7 +151,7 @@ public static class Quadrilaterals
                 ReadOnlyPoint q = corners[j];
                 if ( OnSegment(p, q, point) ) { return true; }
 
-                if ( ( p.Y > point.Y ) != ( q.Y > point.Y ) && point.X < ( ( q.X - p.X ) * ( point.Y - p.Y ) / ( q.Y - p.Y ) ) + p.X ) { inside = !inside; }
+                if ( p.Y > point.Y != q.Y > point.Y && point.X < ( q.X - p.X ) * ( point.Y - p.Y ) / ( q.Y - p.Y ) + p.X ) { inside = !inside; }
             }
 
             return inside;
@@ -275,36 +275,36 @@ public static class Quadrilaterals
 
     // --------------------------------------------------------------------------------- shared helpers
 
-    private static bool   NearlyEqual( double left, double right ) => Math.Abs(left - right) <= TOLERANCE * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
-    private static double Cross( in ReadOnlyPoint o, in ReadOnlyPoint a, in ReadOnlyPoint b ) => (( a.X - o.X ) * ( b.Y - o.Y )) - (( a.Y - o.Y ) * ( b.X - o.X ));
+    private static bool   NearlyEqual( double     left, double           right )                 => Math.Abs(left - right) <= TOLERANCE * Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right)));
+    private static double Cross( in ReadOnlyPoint o,    in ReadOnlyPoint a, in ReadOnlyPoint b ) => ( a.X - o.X )                       * ( b.Y - o.Y ) - ( a.Y - o.Y ) * ( b.X - o.X );
 
     private static bool IsParallel( in ReadOnlyPoint a1, in ReadOnlyPoint a2, in ReadOnlyPoint b1, in ReadOnlyPoint b2 ) =>
-        Math.Abs((( a2.X - a1.X ) * ( b2.Y - b1.Y )) - (( a2.Y - a1.Y ) * ( b2.X - b1.X ))) <= TOLERANCE * Math.Max(1.0, Math.Abs(a2.X - a1.X) + Math.Abs(a2.Y - a1.Y) + Math.Abs(b2.X - b1.X) + Math.Abs(b2.Y - b1.Y));
+        Math.Abs(( a2.X - a1.X ) * ( b2.Y - b1.Y ) - ( a2.Y - a1.Y ) * ( b2.X - b1.X )) <= TOLERANCE * Math.Max(1.0, Math.Abs(a2.X - a1.X) + Math.Abs(a2.Y - a1.Y) + Math.Abs(b2.X - b1.X) + Math.Abs(b2.Y - b1.Y));
 
     private static ReadOnlyPoint ScalePoint( in ReadOnlyPoint point, in ReadOnlyPoint origin, double factor ) =>
-        new(origin.X + (( point.X - origin.X ) * factor), origin.Y + (( point.Y - origin.Y ) * factor));
+        new(origin.X + ( point.X - origin.X ) * factor, origin.Y + ( point.Y - origin.Y ) * factor);
 
     private static ReadOnlyPoint GrowPoint( in ReadOnlyPoint point, in ReadOnlyPoint origin, double amount )
     {
         double dx     = point.X - origin.X;
         double dy     = point.Y - origin.Y;
-        double length = Math.Sqrt(( dx * dx ) + ( dy * dy ));
+        double length = Math.Sqrt(dx * dx + dy * dy);
         if ( length <= TOLERANCE ) { return point; }
 
         double scale = ( length + amount ) / length;
-        return new ReadOnlyPoint(origin.X + ( dx * scale ), origin.Y + ( dy * scale ));
+        return new ReadOnlyPoint(origin.X + dx * scale, origin.Y + dy * scale);
     }
 
     private static ReadOnlyPoint RotatePoint( in ReadOnlyPoint point, in ReadOnlyPoint origin, double sin, double cos )
     {
-        double dx = point.X - origin.X;
-        double dy = point.Y - origin.Y;
-        return new ReadOnlyPoint(origin.X + ( dx * cos ) - ( dy * sin ), origin.Y + ( dx * sin ) + ( dy * cos ));
+        double dx = point.X                          - origin.X;
+        double dy = point.Y                          - origin.Y;
+        return new ReadOnlyPoint(origin.X + dx * cos - dy * sin, origin.Y + dx * sin + dy * cos);
     }
 
     private static bool OnSegment( in ReadOnlyPoint a, in ReadOnlyPoint b, in ReadOnlyPoint point )
     {
-        double cross = (( b.X - a.X ) * ( point.Y - a.Y )) - (( b.Y - a.Y ) * ( point.X - a.X ));
+        double cross = ( b.X - a.X ) * ( point.Y - a.Y ) - ( b.Y - a.Y ) * ( point.X - a.X );
         if ( Math.Abs(cross) > TOLERANCE ) { return false; }
 
         return point.X >= Math.Min(a.X, b.X) - TOLERANCE && point.X <= Math.Max(a.X, b.X) + TOLERANCE && point.Y >= Math.Min(a.Y, b.Y) - TOLERANCE && point.Y <= Math.Max(a.Y, b.Y) + TOLERANCE;

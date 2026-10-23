@@ -16,7 +16,7 @@ public static class Sizes
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.Width},{self.Height}";

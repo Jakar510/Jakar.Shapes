@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> An axis-aligned ellipse (oval). A <see cref="Circle"/> is the special case where both radii are equal. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Ellipse( ReadOnlyPoint center, double radiusX, double radiusY ) : IEllipse<Ellipse>
+[JsonModel]
+public readonly partial struct Ellipse( ReadOnlyPoint center, double radiusX, double radiusY ) : IEllipse<Ellipse>
 {
     public static readonly Ellipse       Invalid = new(ReadOnlyPoint.Invalid, double.NaN, double.NaN);
     public static readonly Ellipse       Zero    = new(ReadOnlyPoint.Zero, 0, 0);
@@ -42,25 +39,6 @@ public readonly struct Ellipse( ReadOnlyPoint center, double radiusX, double rad
     [Pure] public static Ellipse Create( in ReadOnlyPoint center, double radiusX, double radiusY ) => new(center, radiusX, radiusY);
 
 
-    public static bool TryFromJson( string? json, out Ellipse result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Ellipse FromJson( string json ) => json.FromJson<Ellipse>();
 
 
     public int CompareTo( Ellipse other )

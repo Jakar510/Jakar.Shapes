@@ -237,7 +237,7 @@ public static class Rectangles
         public (double Top, double Right, double Bottom, double Left) SideLengths() => (self.Width, self.Height, self.Width, self.Height);
 
         /// <summary> Both diagonals have the same length for a rectangle. </summary>
-        public double DiagonalLength() => Math.Sqrt(( self.Width * self.Width ) + ( self.Height * self.Height ));
+        public double DiagonalLength() => Math.Sqrt(self.Width * self.Width + self.Height * self.Height);
 
         public (double First, double Second) DiagonalLengths()
         {
@@ -260,11 +260,11 @@ public static class Rectangles
             ReadOnlyPoint c = self.Center();
             double        w = self.Width  * factor;
             double        h = self.Height * factor;
-            return TRectangle.Create(c.X - ( w / 2 ), c.Y - ( h / 2 ), w, h);
+            return TRectangle.Create(c.X - w / 2, c.Y - h / 2, w, h);
         }
 
         /// <summary> Expands every edge outward by <paramref name="amount"/>, keeping the centre. </summary>
-        public TRectangle Grow( double amount ) => TRectangle.Create(self.X - amount, self.Y - amount, self.Width + ( 2 * amount ), self.Height + ( 2 * amount ));
+        public TRectangle Grow( double amount ) => TRectangle.Create(self.X - amount, self.Y - amount, self.Width + 2 * amount, self.Height + 2 * amount);
 
         public TRectangle Translate( double xOffset, double yOffset ) => TRectangle.Create(self.X + xOffset, self.Y + yOffset, self.Width, self.Height);
 }

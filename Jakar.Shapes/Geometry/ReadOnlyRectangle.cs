@@ -1,8 +1,6 @@
 ﻿// TrueLogic :: iTrueLogic.Shared
 // 09/21/2023  5:37 PM
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 using ZLinq;
 using ZLinq.Linq;
 
@@ -13,8 +11,8 @@ namespace Jakar.Shapes;
 
 [StructLayout(LayoutKind.Sequential)]
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlyRectangle( double x, double y, double width, double height ) : IRectangle<ReadOnlyRectangle>
+[JsonModel]
+public readonly partial struct ReadOnlyRectangle( double x, double y, double width, double height ) : IRectangle<ReadOnlyRectangle>
 {
     public static readonly ReadOnlyRectangle Invalid = new(double.NaN, double.NaN, double.NaN, double.NaN);
     public static readonly ReadOnlyRectangle Zero    = new(0, 0, 0, 0);
@@ -33,8 +31,8 @@ public readonly struct ReadOnlyRectangle( double x, double y, double width, doub
     double IShapeLocation.                                          Y             => Y;
     double IShapeSize.                                              Width         => Width;
     double IShapeSize.                                              Height        => Height;
-    public ReadOnlyPoint                                            Location      => new(X, Y);
-    public ReadOnlySize                                             Size          => new(Width, Height);
+    [JsonMember(Ignore = true)] public ReadOnlyPoint                                            Location      => new(X, Y);
+    [JsonMember(Ignore = true)] public ReadOnlySize                                             Size          => new(Width, Height);
 
 
     public static implicit operator Rectangle( ReadOnlyRectangle          self )  => new((int)self.X.Round(), (int)self.Y.Round(), (int)self.Width.Round(), (int)self.Height.Round());
@@ -46,25 +44,6 @@ public readonly struct ReadOnlyRectangle( double x, double y, double width, doub
     public static implicit operator ReadOnlyRectangle( double             value ) => Create<ReadOnlySize>(0, 0, value.AsFloat());
 
 
-    public static bool TryFromJson( string? json, out ReadOnlyRectangle result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlyRectangle FromJson( string json ) => json.FromJson<ReadOnlyRectangle>();
     [Pure] public static ReadOnlyRectangle Create<TPoint>( params ReadOnlySpan<TPoint> points )
         where TPoint : struct, IPoint<TPoint>
     {

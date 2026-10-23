@@ -5,7 +5,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface IPoint<TSelf> : IShape<TSelf>, IShapeLocation
-    where TSelf : struct, IPoint<TSelf>, IJsonModel<TSelf>, IEqualComparable<TSelf>
+    where TSelf : struct, IPoint<TSelf>, IJsonSerializable<TSelf>, IEqualComparable<TSelf>
 {
     [Pure] public abstract static TSelf Create( double x, double y );
 
@@ -17,7 +17,7 @@ public interface IPoint<TSelf> : IShape<TSelf>, IShapeLocation
             case "json":
             case "JSON":
             case "Json":
-                return self.ToJson();
+                return JsonCodec.ToJson(self);
 
             case ",":
                 return $"{self.X},{self.Y}";

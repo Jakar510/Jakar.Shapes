@@ -1,9 +1,6 @@
 ﻿// Jakar.Extensions :: Jakar.Extensions
 // 07/11/2025  18:56
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 // [Experimental("Jakar_Shapes_Circle")]
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Circle( ReadOnlyPoint center, double radius ) : ICircle<Circle>, IMathOperators<Circle>
+[JsonModel]
+public readonly partial struct Circle( ReadOnlyPoint center, double radius ) : ICircle<Circle>, IMathOperators<Circle>
 {
     private const          double        TOLERANCE = 1e-8;
     public static readonly Circle        Invalid   = new(ReadOnlyPoint.Invalid, double.NaN);
@@ -42,25 +39,6 @@ public readonly struct Circle( ReadOnlyPoint center, double radius ) : ICircle<C
     public static implicit operator Circle( double         other ) => new(ReadOnlyPoint.Zero, other);
 
 
-    public static bool TryFromJson( string? json, out Circle result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static                                     Circle FromJson( string         json )                  => json.FromJson<Circle>();
     [System.Diagnostics.Contracts.Pure] public static Circle Create( in ReadOnlyPoint center, double radius ) => new(center, radius);
     [System.Diagnostics.Contracts.Pure] public static Circle Create( float            x,      float  y )      => Create(new ReadOnlyPoint(x, y), 1);
     [System.Diagnostics.Contracts.Pure] public static Circle Create( double           x,      double y )      => Create(new ReadOnlyPoint(x, y), 1);

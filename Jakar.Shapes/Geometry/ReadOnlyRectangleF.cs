@@ -1,8 +1,6 @@
 ﻿// TrueLogic :: TrueLogic.Common.Maui
 // 01/20/2025  08:01
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 using ZLinq;
 using ZLinq.Linq;
 
@@ -13,8 +11,8 @@ namespace Jakar.Shapes;
 
 [StructLayout(LayoutKind.Sequential)]
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct ReadOnlyRectangleF( float x, float y, float width, float height ) : IRectangle<ReadOnlyRectangleF>
+[JsonModel]
+public readonly partial struct ReadOnlyRectangleF( float x, float y, float width, float height ) : IRectangle<ReadOnlyRectangleF>
 {
     public static readonly ReadOnlyRectangleF Invalid = new(float.NaN, float.NaN, float.NaN, float.NaN);
     public static readonly ReadOnlyRectangleF Zero    = new(0, 0, 0, 0);
@@ -33,8 +31,8 @@ public readonly struct ReadOnlyRectangleF( float x, float y, float width, float 
     double IShapeLocation.                                            Y             => Y;
     double IShapeSize.                                                Width         => Width;
     double IShapeSize.                                                Height        => Height;
-    public ReadOnlyPoint                                              Location      => new(X, Y);
-    public ReadOnlySize                                               Size          => new(Width, Height);
+    [JsonMember(Ignore = true)] public ReadOnlyPoint                                              Location      => new(X, Y);
+    [JsonMember(Ignore = true)] public ReadOnlySize                                               Size          => new(Width, Height);
 
 
     public static implicit operator Rectangle( ReadOnlyRectangleF  self )  => new((int)self.X.Round(), (int)self.Y.Round(), (int)self.Width.Round(), (int)self.Height.Round());
@@ -47,25 +45,6 @@ public readonly struct ReadOnlyRectangleF( float x, float y, float width, float 
     public static implicit operator ReadOnlyRectangleF( double     value ) => Create<ReadOnlySize>(0, 0, value.AsFloat());
 
 
-    public static bool TryFromJson( string? json, out ReadOnlyRectangleF result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlyRectangleF FromJson( string json ) => json.FromJson<ReadOnlyRectangleF>();
     [Pure] public static ReadOnlyRectangleF Create<TPoint>( params ReadOnlySpan<TPoint> points )
         where TPoint : struct, IPoint<TPoint>
     {

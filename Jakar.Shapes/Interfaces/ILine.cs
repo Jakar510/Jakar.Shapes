@@ -5,7 +5,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface ILine<TSelf, TPoint> : IShape<TSelf>
-    where TSelf : struct, ILine<TSelf, TPoint>, IJsonModel<TSelf>
+    where TSelf : struct, ILine<TSelf, TPoint>, IJsonSerializable<TSelf>
     where TPoint : struct, IPoint<TPoint>
 {
     TPoint End      { get; }
@@ -24,7 +24,7 @@ public interface ILine<TSelf, TPoint> : IShape<TSelf>
 
 
 public interface ILine<TSelf> : ILine<TSelf, ReadOnlyPoint>
-    where TSelf : struct, ILine<TSelf>, IJsonModel<TSelf>
+    where TSelf : struct, ILine<TSelf>, IJsonSerializable<TSelf>
 {
     public abstract static TSelf operator &( TSelf self, ReadOnlyPointF other );
     public abstract static TSelf operator ^( TSelf self, ReadOnlyPointF other );

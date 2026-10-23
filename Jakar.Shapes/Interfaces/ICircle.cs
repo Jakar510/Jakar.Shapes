@@ -5,7 +5,7 @@ namespace Jakar.Shapes.Interfaces;
 
 
 public interface ICircle<TSelf> : IShape<TSelf>, IShapeLocation
-    where TSelf : struct, ICircle<TSelf>, IJsonModel<TSelf>
+    where TSelf : struct, ICircle<TSelf>, IJsonSerializable<TSelf>
 {
     ReadOnlyPoint Center { get; }
     double        Radius { get; }

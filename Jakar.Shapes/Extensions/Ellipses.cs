@@ -19,7 +19,7 @@ public static class Ellipses
                 case "json":
                 case "JSON":
                 case "Json":
-                    return self.ToJson();
+                    return JsonCodec.ToJson(self);
 
                 case ",":
                     return $"{self.Center},{self.RadiusX},{self.RadiusY}";
@@ -84,8 +84,8 @@ public static class Ellipses
             double b = self.SemiMinorAxis();
             if ( a <= 0 && b <= 0 ) { return 0; }
 
-            double h = ( a - b ) * ( a - b ) / (( a + b ) * ( a + b ));
-            return Math.PI * ( a + b ) * ( 1 + ( 3 * h / ( 10 + Math.Sqrt(4 - ( 3 * h )) ) ));
+            double h = ( a - b )                 * ( a - b ) / (( a + b ) * ( a + b ));
+            return Math.PI * ( a + b ) * ( 1 + 3 * h         / ( 10 + Math.Sqrt(4 - 3 * h) ));
         }
 
         public ReadOnlyPoint Centroid() => self.Center;
@@ -100,7 +100,7 @@ public static class Ellipses
             if ( a <= 0 ) { return 0; }
 
             double ratio = b / a;
-            return Math.Sqrt(Math.Max(0, 1 - ( ratio * ratio )));
+            return Math.Sqrt(Math.Max(0, 1 - ratio * ratio));
         }
 
         /// <summary> The two focal points, which coincide at the centre when the ellipse is a circle. </summary>
@@ -108,7 +108,7 @@ public static class Ellipses
         {
             double a = self.SemiMajorAxis();
             double b = self.SemiMinorAxis();
-            double c = Math.Sqrt(Math.Max(0, ( a * a ) - ( b * b )));
+            double c = Math.Sqrt(Math.Max(0, a * a - b * b));
 
             return self.RadiusX >= self.RadiusY
                        ? (new ReadOnlyPoint(self.Center.X - c, self.Center.Y), new ReadOnlyPoint(self.Center.X + c, self.Center.Y))
@@ -119,7 +119,7 @@ public static class Ellipses
         public bool IsCircle() => Math.Abs(self.RadiusX - self.RadiusY) <= TOLERANCE * Math.Max(1.0, Math.Abs(self.RadiusX));
 
         /// <summary> The point on the boundary at parametric angle <paramref name="angle"/>. </summary>
-        public ReadOnlyPoint PointAt( Radians angle ) => new(self.Center.X + ( self.RadiusX * Math.Cos(angle.Value) ), self.Center.Y + ( self.RadiusY * Math.Sin(angle.Value) ));
+        public ReadOnlyPoint PointAt( Radians angle ) => new(self.Center.X + self.RadiusX * Math.Cos(angle.Value), self.Center.Y + self.RadiusY * Math.Sin(angle.Value));
 
 
         // ----------------------------------------------------------------------------- hit testing
@@ -131,7 +131,7 @@ public static class Ellipses
 
             double dx = ( point.X - self.Center.X ) / self.RadiusX;
             double dy = ( point.Y - self.Center.Y ) / self.RadiusY;
-            return ( dx * dx ) + ( dy * dy ) <= 1 + TOLERANCE;
+            return dx * dx + dy                   * dy <= 1 + TOLERANCE;
         }
 
         /// <summary> Conservative overlap test using the bounding boxes and a radial check. </summary>
@@ -159,7 +159,7 @@ public static class Ellipses
         {
             double quarter = Math.PI / 2;
             long   steps   = (long)Math.Round(angle.Value / quarter);
-            return Math.Abs(( steps * quarter ) - angle.Value) > TOLERANCE
+            return Math.Abs(steps * quarter - angle.Value) > TOLERANCE
                        ? TEllipse.Create(self.Center, double.NaN, double.NaN)
                        : ( steps & 1 ) == 0
                            ? TEllipse.Create(self.Center, self.RadiusX, self.RadiusY)

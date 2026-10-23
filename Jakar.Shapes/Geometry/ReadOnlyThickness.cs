@@ -1,16 +1,14 @@
 ﻿// TrueLogic :: TrueLogic.Common
 // 10/22/2024  13:10
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
 
 
 [DefaultValue(nameof(Zero))]
-public readonly struct ReadOnlyThickness( double left, double top, double right, double bottom ) : IThickness<ReadOnlyThickness>, IMathOperators<ReadOnlyThickness>
+[JsonModel]
+public readonly partial struct ReadOnlyThickness( double left, double top, double right, double bottom ) : IThickness<ReadOnlyThickness>, IMathOperators<ReadOnlyThickness>
 {
     public static readonly ReadOnlyThickness Invalid             = new(double.NaN, double.NaN, double.NaN, double.NaN);
     public static readonly ReadOnlyThickness Zero                = new(0);
@@ -19,16 +17,16 @@ public readonly struct ReadOnlyThickness( double left, double top, double right,
     public readonly        double            Left                = left;
     public readonly        double            Right               = right;
     public readonly        double            Top                 = top;
-    public readonly        double            HorizontalThickness = left + right;
-    public readonly        double            VerticalThickness   = top  + bottom;
+    [JsonMember(Ignore = true)] public readonly        double            HorizontalThickness = left + right;
+    [JsonMember(Ignore = true)] public readonly        double            VerticalThickness   = top  + bottom;
 
      
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.Zero                => ref Zero;
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.Invalid             => ref Invalid;
     static ref readonly ReadOnlyThickness IShape<ReadOnlyThickness>.One                 => ref One;
-    public              bool                                        IsEmpty             => Left == 0 && Top == 0 && Right == 0 && Bottom == 0;
-    public              bool                                        IsNaN               => double.IsNaN(Left) || double.IsNaN(Top) || double.IsNaN(Right) || double.IsNaN(Bottom);
-    public              bool                                        IsValid             => !IsNaN;
+    [JsonMember(Ignore = true)] public              bool                                        IsEmpty             => Left == 0 && Top == 0 && Right == 0 && Bottom == 0;
+    [JsonMember(Ignore = true)] public              bool                                        IsNaN               => double.IsNaN(Left) || double.IsNaN(Top) || double.IsNaN(Right) || double.IsNaN(Bottom);
+    [JsonMember(Ignore = true)] public              bool                                        IsValid             => !IsNaN;
     double IThickness<ReadOnlyThickness>.                           Bottom              => Bottom;
     double IThickness<ReadOnlyThickness>.                           Left                => Left;
     double IThickness<ReadOnlyThickness>.                           Right               => Right;
@@ -41,25 +39,6 @@ public readonly struct ReadOnlyThickness( double left, double top, double right,
     public ReadOnlyThickness( double horizontalSize, double verticalSize ) : this(horizontalSize / 2, verticalSize / 2, horizontalSize / 2, verticalSize / 2) { }
 
 
-    public static bool TryFromJson( string? json, out ReadOnlyThickness result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static ReadOnlyThickness FromJson( string json ) => json.FromJson<ReadOnlyThickness>();
 
 
     public void Deconstruct( out float  left,             out float  top, out float right, out float bottom ) => ( left, top, right, bottom ) = ( Left.AsFloat(), Top.AsFloat(), Right.AsFloat(), Bottom.AsFloat() );

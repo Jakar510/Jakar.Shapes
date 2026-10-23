@@ -1,9 +1,6 @@
 // Jakar.Extensions :: Jakar.Shapes
 // 08/13/2026
 
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
-
 
 
 namespace Jakar.Shapes;
@@ -11,8 +8,8 @@ namespace Jakar.Shapes;
 
 /// <summary> Four vertices in order. Use IsParallelogram() to verify opposite sides are parallel. </summary>
 [DefaultValue(nameof(Zero))]
-[method: JsonConstructor]
-public readonly struct Parallelogram( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Parallelogram>
+[JsonModel]
+public readonly partial struct Parallelogram( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) : IQuadrilateral<Parallelogram>
 {
     public static readonly Parallelogram    Invalid = new(ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid, ReadOnlyPoint.Invalid);
     public static readonly Parallelogram    Zero    = new(ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero, ReadOnlyPoint.Zero);
@@ -34,7 +31,7 @@ public readonly struct Parallelogram( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnly
     ReadOnlyPoint IQuadrilateral<Parallelogram>.   B        => B;
     ReadOnlyPoint IQuadrilateral<Parallelogram>.   C        => C;
     ReadOnlyPoint IQuadrilateral<Parallelogram>.   D        => D;
-    public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
+    [JsonMember(Ignore = true)] public bool                          IsNaN    => A.IsNaN() || B.IsNaN() || C.IsNaN() || D.IsNaN();
 
 
     [Pure] public static Parallelogram Create( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnlyPoint c, ReadOnlyPoint d ) => new(a, b, c, d);
@@ -44,25 +41,6 @@ public readonly struct Parallelogram( ReadOnlyPoint a, ReadOnlyPoint b, ReadOnly
         new(origin, origin + edge1, origin + edge1 + edge2, origin + edge2);
 
 
-    public static bool TryFromJson( string? json, out Parallelogram result )
-    {
-        try
-        {
-            if ( string.IsNullOrWhiteSpace(json) )
-            {
-                result = Invalid;
-                return false;
-            }
-
-            result = FromJson(json);
-            return true;
-        }
-        catch ( Exception e ) { SelfLogger.WriteLine("{Exception}", e.ToString()); }
-
-        result = Invalid;
-        return false;
-    }
-    public static Parallelogram FromJson( string json ) => json.FromJson<Parallelogram>();
 
 
     public int CompareTo( Parallelogram other )
